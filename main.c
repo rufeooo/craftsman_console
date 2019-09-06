@@ -1,9 +1,13 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "sys_dlfn.h"
+#include "sys_input.h"
+
+static bool running = true;
 
 static char *
 skipWhitespace(char *str)
@@ -14,41 +18,15 @@ skipWhitespace(char *str)
   return str;
 }
 
-static char *
-seekLF(char *str)
-{
-  while (*str != '\n' && *str != 0)
-    ++str;
-  return str;
-}
-
 static inline void
-trySymbol()
+trySymbol(char *input)
 {
-  char buffer[128];
-  if (fgets(buffer, sizeof(buffer), stdin)) {
-    char *str = skipWhitespace(buffer);
-    char *end = seekLF(str);
-    *end = 0;
-    sys_dlfnCall(str);
-  }
-}
-
-void
-handler(char c, bool *stop)
-{
-  switch (c) {
-  case 'q':
-    *stop = true;
+  char *firstSpace = strchr(input, ' ');
+  if (!firstSpace)
     return;
-  case 'r':
-    sys_dlfnClose();
-    sys_dlfnOpen();
-    return;
-  case 'c':
-    trySymbol();
-    return;
-  }
+  char *str = skipWhitespace(firstSpace);
+  printf("Trycall %s\n", str);
+  sys_dlfnCall(str);
 }
 
 void
@@ -60,17 +38,22 @@ prompt()
 }
 
 void
-waitForInput()
+inputEvent(size_t len, char *input)
 {
-  bool stop = false;
-  for (char c = 0;; c = getc(stdin)) {
-    if (c == '\n')
-      continue;
-    handler(c, &stop);
-    if (stop)
-      return;
-    prompt();
+  switch (input[0]) {
+  case 'q':
+    running = false;
+    return;
+  case 'r':
+    sys_dlfnClose();
+    sys_dlfnOpen();
+    return;
+  case 'c':
+    trySymbol(input);
+    return;
   }
+
+  prompt();
 }
 
 int
@@ -78,7 +61,14 @@ main(int argc, char **argv)
 {
   sys_dlfnClose();
 
-  waitForInput();
+  sys_inputInit();
+  prompt();
+  while (running) {
+    sys_inputPoll(inputEvent);
+  }
+  sys_inputShutdown();
+
+  sys_dlfnClose();
 
   return 0;
 }
