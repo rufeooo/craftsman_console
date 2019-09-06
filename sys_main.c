@@ -36,5 +36,7 @@ main(int argc, char **argv)
       printf("lastError %d\n", sys_notifyLastError());
   }
 
+  sys_notifyShutdown();
+
   return 0;
 }

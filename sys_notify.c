@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/inotify.h>
 #include <unistd.h>
 
@@ -114,5 +115,16 @@ sys_notifyPoll(void (*handle_event)(int idx, const struct inotify_event *))
   lastError = 0;
 
   return true;
+}
+
+void
+sys_notifyShutdown()
+{
+  for (int i = 0; i < watchState.nfds; ++i) {
+    close(watchState.fds[i].fd);
+  }
+  free(watchState.fds);
+  free(watchState.wd);
+  memset(&watchState, 0, sizeof(watchState));
 }
 
