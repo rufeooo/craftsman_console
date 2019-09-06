@@ -6,6 +6,8 @@
 #include <dlfcn.h>
 #include <link.h>
 
+#include "sys_dlfn.h"
+
 typedef struct {
   const char *name;
   int (*func)();
@@ -17,14 +19,14 @@ static const int MAX_SYMBOLS = 32;
 static Symbol_t symbols[MAX_SYMBOLS];
 static int usedSymbols;
 
-void
+static void
 resetSymbols()
 {
   memset(symbols, 0, sizeof(symbols));
   usedSymbols = 0;
 }
 
-void
+static void
 addSymbol(Symbol_t sym)
 {
   if (usedSymbols >= MAX_SYMBOLS)
@@ -33,7 +35,7 @@ addSymbol(Symbol_t sym)
 }
 
 void
-printSymbols()
+sys_dlfnPrintSymbols()
 {
   for (int i = 0; i < usedSymbols; ++i) {
     printf("%s: %p\n", symbols[i].name, (void *) symbols[i].func);
@@ -41,16 +43,7 @@ printSymbols()
 }
 
 void
-callSymbols()
-{
-  for (int i = 0; i < usedSymbols; ++i) {
-    int r = symbols[i].func();
-    printf("return %d\n", r);
-  }
-}
-
-void
-callSymbol(const char *name)
+sys_dlfnCall(const char *name)
 {
   for (int i = 0; i < usedSymbols; ++i) {
     if (strcmp(name, symbols[i].name) == 0) {
@@ -60,7 +53,7 @@ callSymbol(const char *name)
   }
 }
 
-void
+static void
 parseSymtab(void *addr, void *symtab, void *strtab)
 {
   ElfW(Sym *) iter = symtab;
@@ -74,7 +67,7 @@ parseSymtab(void *addr, void *symtab, void *strtab)
   }
 }
 
-void
+static void
 parseDynamicHeader(void *addr, const ElfW(Phdr) * phdr)
 {
   ElfW(Addr) base = (ElfW(Addr)) addr;
@@ -98,7 +91,7 @@ parseDynamicHeader(void *addr, const ElfW(Phdr) * phdr)
     parseSymtab(addr, symtab, strtab);
 }
 
-void
+static void
 parseElfHeader(void *dlAddr)
 {
   ElfW(Ehdr) *elfHeader = dlAddr;
@@ -117,7 +110,7 @@ parseElfHeader(void *dlAddr)
 }
 
 bool
-openLibrary()
+sys_dlfnOpen()
 {
   dlhandle = dlopen("feature.so", RTLD_NOW);
   Dl_info info;
@@ -147,7 +140,7 @@ openLibrary()
 }
 
 bool
-closeLibrary()
+sys_dlfnClose()
 {
   if (!dlhandle)
     return false;
@@ -159,20 +152,4 @@ closeLibrary()
   dlhandle = NULL;
 
   return true;
-}
-
-static inline void
-trySymbol()
-{
-  char buffer[128];
-  if (fgets(buffer, sizeof(buffer), stdin)) {
-    char *str = buffer;
-    while (*str == ' ')
-      ++str;
-    char *end = str;
-    while (*end != '\n' && *end != 0)
-      ++end;
-    *end = 0;
-    callSymbol(str);
-  }
 }
