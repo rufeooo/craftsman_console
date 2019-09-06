@@ -1,5 +1,6 @@
-#include "sys_notify.c"
 #include <stdio.h>
+
+#include "sys_notify.c"
 
 void
 change_event(int idx, const struct inotify_event *ev)
@@ -17,7 +18,6 @@ change_event(int idx, const struct inotify_event *ev)
     printf("IN_CLOSE_WRITE: ");
   if (ev->mask & IN_IGNORED)
     printf("IN_IGNORED: ");
-
 }
 
 int

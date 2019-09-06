@@ -5,8 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/inotify.h>
 #include <unistd.h>
+
+#include "sys_notify.h"
 
 typedef struct {
   int nfds;
@@ -24,7 +25,7 @@ sys_notifyLastError()
 }
 
 bool
-sys_notifyInit(uint32_t argc, char **argv)
+sys_notifyInit(uint32_t eventMask, uint32_t argc, char **argv)
 {
   watchState.fds = calloc(argc, sizeof(struct pollfd));
   if (!watchState.fds) {
@@ -54,7 +55,7 @@ sys_notifyInit(uint32_t argc, char **argv)
     }
 
     watchState.wd[i] =
-      inotify_add_watch(pfd.fd, argv[i], IN_DELETE | IN_CLOSE_WRITE);
+      inotify_add_watch(pfd.fd, argv[i], eventMask);
     if (watchState.wd[i] == -1) {
       lastError = 5;
       perror("inotify_add_watch");
@@ -68,7 +69,7 @@ sys_notifyInit(uint32_t argc, char **argv)
 }
 
 bool
-sys_notifyPoll(void (*handle_event)(int idx, const struct inotify_event *))
+sys_notifyPoll(sys_notifyEvent handler)
 {
   static char buf[4096]
     __attribute__((aligned(__alignof__(struct inotify_event))));
@@ -107,7 +108,7 @@ sys_notifyPoll(void (*handle_event)(int idx, const struct inotify_event *))
     while (event < eventEnd) {
       const struct inotify_event *notify =
         (const struct inotify_event *) event;
-      handle_event(i, notify);
+      handler(i, notify);
       event += sizeof(struct inotify_event) + notify->len;
     }
   }
