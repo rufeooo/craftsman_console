@@ -11,3 +11,10 @@ int disenchant() {
   --artifactPower;
   return artifactPower;
 }
+
+int multiply() {
+  artifactPower *= 2;
+
+  return artifactPower;
+}
+

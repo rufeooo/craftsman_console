@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <link.h>
 
+#include "macro.h"
 #include "sys_dlfn.h"
 
 typedef struct {
@@ -13,7 +14,8 @@ typedef struct {
   int (*func)();
 } Symbol_t;
 
-static const char *dlname = "feature.so";
+static const int MAX_PATH = 128;
+static char dlname[MAX_PATH];
 static void *dlhandle;
 static const int MAX_SYMBOLS = 32;
 static Symbol_t symbols[MAX_SYMBOLS];
@@ -112,7 +114,7 @@ parseElfHeader(void *dlAddr)
 bool
 sys_dlfnOpen()
 {
-  dlhandle = dlopen("feature.so", RTLD_NOW);
+  dlhandle = dlopen(dlname, RTLD_NOW);
   Dl_info info;
   struct link_map *dllm;
   if (!dlhandle) {
@@ -153,3 +155,23 @@ sys_dlfnClose()
 
   return true;
 }
+
+bool
+sys_dlfnInit(const char *filepath)
+{
+  if (!strstr(filepath, ".so"))
+    return false;
+
+  strncpy(dlname, filepath, sizeof(dlname));
+  NULLTERM(dlname);
+
+  return true;
+}
+
+void
+sys_dlfnShutdown()
+{
+  sys_dlfnClose();
+  dlname[0] = 0;
+}
+

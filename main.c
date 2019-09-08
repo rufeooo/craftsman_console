@@ -10,6 +10,7 @@
 #include "sys_notify.h"
 
 static bool running = true;
+static const char *dlpath = "code/feature.so";
 
 static char *
 skipWhitespace(char *str)
@@ -58,7 +59,7 @@ void
 notifyEvent(int idx, const struct inotify_event *event)
 {
   printf("File change %s\n", event->name);
-  if (!strstr(event->name, "feature.so"))
+  if (!strstr(dlpath, event->name))
     return;
 
   sys_dlfnClose();
@@ -69,18 +70,19 @@ int
 main(int argc, char **argv)
 {
   char *watchDirs[] = { "code" };
-  sys_dlfnClose();
 
   sys_notifyInit(IN_CLOSE_WRITE, LENGTHOF(watchDirs), watchDirs);
+  sys_dlfnInit(dlpath);
+  sys_dlfnOpen();
   sys_inputInit();
   prompt();
   while (running) {
     sys_inputPoll(inputEvent);
     sys_notifyPoll(notifyEvent);
   }
+  sys_notifyShutdown();
+  sys_dlfnShutdown();
   sys_inputShutdown();
-
-  sys_dlfnClose();
 
   return 0;
 }
