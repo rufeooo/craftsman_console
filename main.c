@@ -4,8 +4,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "macro.h"
 #include "sys_dlfn.h"
 #include "sys_input.h"
+#include "sys_notify.h"
 
 static bool running = true;
 
@@ -34,7 +36,7 @@ prompt()
 {
   sys_dlfnPrintSymbols();
   // dl_iterate_phdr(phdr_callback, NULL);
-  puts("(q)uit (r)eload (c)all >");
+  puts("(q)uit (c)all >");
 }
 
 void
@@ -44,10 +46,6 @@ inputEvent(size_t len, char *input)
   case 'q':
     running = false;
     return;
-  case 'r':
-    sys_dlfnClose();
-    sys_dlfnOpen();
-    return;
   case 'c':
     trySymbol(input);
     return;
@@ -56,15 +54,29 @@ inputEvent(size_t len, char *input)
   prompt();
 }
 
+void
+notifyEvent(int idx, const struct inotify_event *event)
+{
+  printf("File change %s\n", event->name);
+  if (!strstr(event->name, "feature.so"))
+    return;
+
+  sys_dlfnClose();
+  sys_dlfnOpen();
+}
+
 int
 main(int argc, char **argv)
 {
+  char *watchDirs[] = { "code" };
   sys_dlfnClose();
 
+  sys_notifyInit(IN_CLOSE_WRITE, LENGTHOF(watchDirs), watchDirs);
   sys_inputInit();
   prompt();
   while (running) {
     sys_inputPoll(inputEvent);
+    sys_notifyPoll(notifyEvent);
   }
   sys_inputShutdown();
 

@@ -92,7 +92,6 @@ sys_notifyPoll(sys_notifyEvent handler)
       continue;
     }
 
-    printf("read %d\n", i);
     watchState.fds[i].revents = 0;
 
     ssize_t len = read(watchState.fds[i].fd, buf, sizeof buf);
@@ -101,7 +100,6 @@ sys_notifyPoll(sys_notifyEvent handler)
       lastError = 7;
       return false;
     }
-    printf("readlen %lx\n", len);
 
     event = buf;
     eventEnd = buf + len;
