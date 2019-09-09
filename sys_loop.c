@@ -62,13 +62,11 @@ void
 sys_loopSync()
 {
   ++frame;
-  uint64_t newTsc;
   for (;;) {
-    newTsc = rdtsc();
-    if (newTsc - tsc >= tscPerFrame)
+    if (rdtsc() - tsc >= tscPerFrame)
       break;
   }
-  tsc = newTsc;
+  tsc += tscPerFrame;
 }
 
 void

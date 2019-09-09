@@ -7,9 +7,9 @@
 #include "macro.h"
 #include "sys_dlfn.h"
 #include "sys_input.h"
+#include "sys_loop.c"
 #include "sys_notify.h"
 
-static bool running = true;
 static const char *dlpath = "code/feature.so";
 
 static char *
@@ -45,7 +45,7 @@ inputEvent(size_t len, char *input)
 {
   switch (input[0]) {
   case 'q':
-    running = false;
+    sys_loopHalt();
     return;
   case 'c':
     trySymbol(input);
@@ -71,18 +71,23 @@ main(int argc, char **argv)
 {
   char *watchDirs[] = { "code" };
 
+  sys_loopInit(10);
+  sys_loopPrintStatus();
   sys_notifyInit(IN_CLOSE_WRITE, LENGTHOF(watchDirs), watchDirs);
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
   sys_inputInit();
   prompt();
-  while (running) {
+  while (sys_loopRun()) {
     sys_inputPoll(inputEvent);
     sys_notifyPoll(notifyEvent);
+    sys_loopSync();
   }
   sys_notifyShutdown();
   sys_dlfnShutdown();
   sys_inputShutdown();
+  sys_loopShutdown();
+  sys_loopPrintStatus();
 
   return 0;
 }
