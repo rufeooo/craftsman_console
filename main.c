@@ -9,6 +9,7 @@
 #include "sys_input.h"
 #include "sys_loop.c"
 #include "sys_notify.h"
+#include "sys_state.c"
 
 static const char *dlpath = "code/feature.so";
 
