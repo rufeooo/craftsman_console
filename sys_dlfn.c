@@ -11,7 +11,7 @@
 
 typedef struct {
   const char *name;
-  int (*func)();
+  SymbolFunc func;
 } Symbol_t;
 
 static const int MAX_PATH = 128;
@@ -53,6 +53,18 @@ sys_dlfnCall(const char *name)
       printf("%s returns %d\n", name, r);
     }
   }
+}
+
+SymbolFunc
+sys_dlfnGet(const char *name)
+{
+  for (int i = 0; i < usedSymbols; ++i) {
+    if (strcmp(name, symbols[i].name) == 0) {
+      return symbols[i].func;
+    }
+  }
+
+  return NULL;
 }
 
 static void

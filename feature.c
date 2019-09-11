@@ -2,17 +2,26 @@
 
 int artifactPower = 0;
 
-int enchant() {
-  ++artifactPower;
+int
+enchant(int p)
+{
+  if (p > 10 || p < -10)
+    return artifactPower;
+
+  artifactPower += p;
   return artifactPower;
 }
 
-int disenchant() {
+int
+disenchant()
+{
   --artifactPower;
   return artifactPower;
 }
 
-int multiply() {
+int
+multiply()
+{
   artifactPower *= 2;
 
   return artifactPower;

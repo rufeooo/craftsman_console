@@ -2,47 +2,21 @@
 #include <string.h>
 
 typedef struct {
-  int (*func)();   // C functor? with bound parameters
-  System_t *child; // More participants in this system
-  System_t *next;  // Next system (TODO: Can we build this from decl of
-                   // dependent systems?)
+  const char *name; // Common name
+  int (*func)();    // C functor? with bound parameters
+  System_t *next;
 } System_t;
 
-static System_t systemRoot;
-
-System_t *
-sys_stateSystemLinkChild(System_t *system, System_t *child)
-{
-  system->child = child;
-  return child;
-}
-
-System_t *
-sys_stateSystemLinkNext(System_t *system, System_t *next)
-{
-  system->next = next;
-  return next;
-}
-
-bool
-sys_stateInit(System_t *root)
-{
-  systemRoot = *root;
-
-  return true;
-}
-
-// Preorder traversal: (Root, child, next)
-void
-sys_stateUpdate(System_t *active)
-{
-  active->func();
-  sys_stateUpdate(active->child);
-  sys_stateUpate(active->next);
-}
+static System_t systemTail = { "tail", NULL, NULL };
+static System_t *systemHead = systemTail;
 
 void
-sys_stateShutdown()
+sys_stateCreate(const char *name, int (*func)())
 {
-  memset(systemRoot, 0, sizeof(systemRoot));
+  System_t *test = calloc(1, sizeof(System_t));
+  test->name = strdup(name);
+  test->func = func;
+  test->next = systemHead;
+  systemHead = test;
 }
+

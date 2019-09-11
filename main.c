@@ -4,12 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "functor.c"
 #include "macro.h"
 #include "sys_dlfn.h"
 #include "sys_input.h"
 #include "sys_loop.c"
 #include "sys_notify.h"
-#include "sys_state.c"
 
 static const char *dlpath = "code/feature.so";
 
@@ -30,7 +30,22 @@ trySymbol(char *input)
     return;
   char *str = skipWhitespace(firstSpace);
   printf("Trycall %s\n", str);
-  sys_dlfnCall(str);
+  SymbolFunc fn = sys_dlfnGet(str);
+  if (fn) {
+    Functor_t fnctor = functor_init(fn);
+    printf("Found.\n");
+    int i = functor_invoke(&fnctor);
+    printf("Called %d.\n", i);
+    functor_param(&fnctor, 3);
+    i = functor_invoke(&fnctor);
+    printf("Called with argi %d\n", i);
+    functor_param(&fnctor, 4);
+    i = functor_invoke(&fnctor);
+    printf("Called with argi argi %d\n", i);
+    functor_param(&fnctor, 5);
+    i = functor_invoke(&fnctor);
+    printf("Called with argi argi argi %d\n", i);
+  }
 }
 
 void
