@@ -1,18 +1,5 @@
 
-#include <stdint.h>
-
-typedef union {
-  int i;
-  void *p;
-} Param_t;
-
-typedef int (*FuncPointer)();
-
-typedef struct {
-  uint32_t type;
-  FuncPointer call;
-  Param_t param[4];
-} Functor_t;
+#include "functor.h"
 
 Functor_t
 functor_init(FuncPointer fp)

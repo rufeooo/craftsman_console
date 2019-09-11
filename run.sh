@@ -1,5 +1,5 @@
 #!/bin/bash
-clang main.c sys_notify.c sys_input.c sys_dlfn.c -ldl -g -O0 -Wno-multichar
+clang main.c sys_notify.c sys_input.c sys_dlfn.c functor.c -ldl -g -O0 -Wno-multichar
 if [ $? -eq 0 ]; then
   LD_LIBRARY_PATH=. ./a.out
 else

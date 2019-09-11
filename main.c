@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "functor.c"
+#include "functor.h"
 #include "macro.h"
 #include "sys_dlfn.h"
 #include "sys_input.h"
