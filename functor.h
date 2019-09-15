@@ -1,30 +1,31 @@
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 typedef union {
-  int i;
+  size_t i;
   void *p;
 } Param_t;
 
-typedef int (*FuncPointer)();
+typedef size_t (*FuncPointer)();
 
 typedef struct {
-  uint32_t type;
   FuncPointer call;
-  Param_t param[4];
+  Param_t param[3];
 } Functor_t;
 
 // Methods
-Functor_t functor_init(FuncPointer fp);
-int functor_invoke(Functor_t *fnctor);
+__attribute__((always_inline)) inline Functor_t
+functor_init(FuncPointer fp)
+{
+  return (Functor_t){ .call = fp };
+}
+__attribute__((always_inline)) inline size_t
+functor_invoke(Functor_t *fnctor)
+{
+  return fnctor->call(fnctor->param[0], fnctor->param[1], fnctor->param[2],
+                      fnctor->param[3]);
+}
 
-// Generic Parameter binding
-#define functor_param(f, X)             \
-  _Generic((X), int                     \
-           : functor_param_int, default \
-           : functor_param_pointer)(f, X)
-
-void functor_param_int(Functor_t *fnctor, int i);
-void functor_param_pointer(Functor_t *fnctor, void *p);
