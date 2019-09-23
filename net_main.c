@@ -3,7 +3,7 @@
 int
 main(int argc, char **argv)
 {
-  bool configured = sys_networkConfigure("assets.rufe.org", "10123");
+  bool configured = sys_networkConfigure("assets.rufe.org", "4000");
   bool connected = sys_networkConnect();
   static char readBuffer[4096];
   static ssize_t usedReadBuffer;

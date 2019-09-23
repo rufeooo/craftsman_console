@@ -25,7 +25,6 @@ functor_init(FuncPointer fp)
 __attribute__((always_inline)) inline size_t
 functor_invoke(Functor_t *fnctor)
 {
-  return fnctor->call(fnctor->param[0], fnctor->param[1], fnctor->param[2],
-                      fnctor->param[3]);
+  return fnctor->call(fnctor->param[0], fnctor->param[1], fnctor->param[2]);
 }
 

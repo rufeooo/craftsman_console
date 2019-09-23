@@ -36,13 +36,13 @@ trySymbol(char *input)
     printf("Found.\n");
     int i = functor_invoke(&fnctor);
     printf("Called %d.\n", i);
-    functor_param(&fnctor, 3);
+    fnctor.param[0].i = 3;
     i = functor_invoke(&fnctor);
     printf("Called with argi %d\n", i);
-    functor_param(&fnctor, 4);
+    fnctor.param[1].i = 4;
     i = functor_invoke(&fnctor);
     printf("Called with argi argi %d\n", i);
-    functor_param(&fnctor, 5);
+    fnctor.param[2].i = 5;
     i = functor_invoke(&fnctor);
     printf("Called with argi argi argi %d\n", i);
   }
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 
   sys_loopInit(10);
   sys_loopPrintStatus();
-  sys_notifyInit(IN_CLOSE_WRITE, LENGTHOF(watchDirs), watchDirs);
+  sys_notifyInit(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
   sys_inputInit();

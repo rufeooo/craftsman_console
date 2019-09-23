@@ -9,17 +9,13 @@
 #include "macro.h"
 #include "sys_dlfn.h"
 
-typedef struct {
-  const char *name;
-  SymbolFunc func;
-} Symbol_t;
-
 static const int MAX_PATH = 128;
 static char dlname[MAX_PATH];
 static void *dlhandle;
-static const int MAX_SYMBOLS = 32;
-static Symbol_t symbols[MAX_SYMBOLS];
-static int usedSymbols;
+
+// visible
+Symbol_t symbols[MAX_SYMBOLS];
+int usedSymbols;
 
 static void
 resetSymbols()
@@ -40,7 +36,7 @@ void
 sys_dlfnPrintSymbols()
 {
   for (int i = 0; i < usedSymbols; ++i) {
-    printf("%s: %p\n", symbols[i].name, (void *) symbols[i].func);
+    printf("%s: %p\n", symbols[i].name, (void *) symbols[i].fnctor.call);
   }
 }
 
@@ -49,22 +45,22 @@ sys_dlfnCall(const char *name)
 {
   for (int i = 0; i < usedSymbols; ++i) {
     if (strcmp(name, symbols[i].name) == 0) {
-      int r = symbols[i].func();
+      int r = symbols[i].fnctor.call();
       printf("%s returns %d\n", name, r);
     }
   }
 }
 
-SymbolFunc
+Functor_t
 sys_dlfnGet(const char *name)
 {
   for (int i = 0; i < usedSymbols; ++i) {
     if (strcmp(name, symbols[i].name) == 0) {
-      return symbols[i].func;
+      return symbols[i].fnctor;
     }
   }
 
-  return NULL;
+  return (Functor_t){};
 }
 
 static void
@@ -75,9 +71,9 @@ parseSymtab(void *addr, void *symtab, void *strtab)
     if (ELF64_ST_TYPE(iter->st_info) != STT_FUNC)
       continue;
     Symbol_t s = { .name = &strtab[iter->st_name],
-                   .func = (void *) (addr + iter->st_value) };
+                   .fnctor = functor_init((void *) (addr + iter->st_value)) };
     addSymbol(s);
-    printf("Symbol %s addr %p\n", s.name, s.func);
+    printf("Symbol %s addr %p\n", s.name, s.fnctor.call);
   }
 }
 
