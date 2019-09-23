@@ -41,6 +41,8 @@ notifyEvent(int idx, const struct inotify_event *event)
 
   sys_dlfnClose();
   sys_dlfnOpen();
+
+  prompt();
 }
 
 int

@@ -1,29 +1,12 @@
-#include <stdio.h>
+#include <stdlib.h>
 
-int artifactPower = 0;
+size_t tick;
 
-int
-enchant(int p)
+size_t
+game_tick()
 {
-  if (p > 10 || p < -10)
-    return artifactPower;
+  ++tick;
 
-  artifactPower += p;
-  return artifactPower;
-}
-
-int
-disenchant()
-{
-  --artifactPower;
-  return artifactPower;
-}
-
-int
-multiply()
-{
-  artifactPower *= 2;
-
-  return artifactPower;
+  return tick;
 }
 
