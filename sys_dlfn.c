@@ -14,38 +14,38 @@ static char dlname[MAX_PATH];
 static void *dlhandle;
 
 // visible
-Symbol_t symbols[MAX_SYMBOLS];
-int usedSymbols;
+Symbol_t dlfnSymbols[MAX_SYMBOLS];
+int dlfnUsedSymbols;
 
 static void
 resetSymbols()
 {
-  memset(symbols, 0, sizeof(symbols));
-  usedSymbols = 0;
+  memset(dlfnSymbols, 0, sizeof(dlfnSymbols));
+  dlfnUsedSymbols = 0;
 }
 
 static void
 addSymbol(Symbol_t sym)
 {
-  if (usedSymbols >= MAX_SYMBOLS)
+  if (dlfnUsedSymbols >= MAX_SYMBOLS)
     return;
-  symbols[usedSymbols++] = sym;
+  dlfnSymbols[dlfnUsedSymbols++] = sym;
 }
 
 void
 sys_dlfnPrintSymbols()
 {
-  for (int i = 0; i < usedSymbols; ++i) {
-    printf("%s: %p\n", symbols[i].name, (void *) symbols[i].fnctor.call);
+  for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    printf("%s: %p\n", dlfnSymbols[i].name, (void *) dlfnSymbols[i].fnctor.call);
   }
 }
 
 void
 sys_dlfnCall(const char *name)
 {
-  for (int i = 0; i < usedSymbols; ++i) {
-    if (strcmp(name, symbols[i].name) == 0) {
-      int r = symbols[i].fnctor.call();
+  for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    if (strcmp(name, dlfnSymbols[i].name) == 0) {
+      int r = dlfnSymbols[i].fnctor.call();
       printf("%s returns %d\n", name, r);
     }
   }
@@ -54,9 +54,9 @@ sys_dlfnCall(const char *name)
 Functor_t
 sys_dlfnGet(const char *name)
 {
-  for (int i = 0; i < usedSymbols; ++i) {
-    if (strcmp(name, symbols[i].name) == 0) {
-      return symbols[i].fnctor;
+  for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    if (strcmp(name, dlfnSymbols[i].name) == 0) {
+      return dlfnSymbols[i].fnctor;
     }
   }
 

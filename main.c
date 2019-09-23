@@ -13,47 +13,11 @@
 
 static const char *dlpath = "code/feature.so";
 
-static char *
-skipWhitespace(char *str)
-{
-  while (*str == ' ' || *str == '\t')
-    ++str;
-
-  return str;
-}
-
-static inline void
-trySymbol(char *input)
-{
-  char *firstSpace = strchr(input, ' ');
-  if (!firstSpace)
-    return;
-  char *str = skipWhitespace(firstSpace);
-  printf("Trycall %s\n", str);
-  SymbolFunc fn = sys_dlfnGet(str);
-  if (fn) {
-    Functor_t fnctor = functor_init(fn);
-    printf("Found.\n");
-    int i = functor_invoke(&fnctor);
-    printf("Called %d.\n", i);
-    fnctor.param[0].i = 3;
-    i = functor_invoke(&fnctor);
-    printf("Called with argi %d\n", i);
-    fnctor.param[1].i = 4;
-    i = functor_invoke(&fnctor);
-    printf("Called with argi argi %d\n", i);
-    fnctor.param[2].i = 5;
-    i = functor_invoke(&fnctor);
-    printf("Called with argi argi argi %d\n", i);
-  }
-}
-
 void
 prompt()
 {
   sys_dlfnPrintSymbols();
-  // dl_iterate_phdr(phdr_callback, NULL);
-  puts("(q)uit (c)all >");
+  puts("(q)uit >");
 }
 
 void
@@ -62,9 +26,6 @@ inputEvent(size_t len, char *input)
   switch (input[0]) {
   case 'q':
     sys_loopHalt();
-    return;
-  case 'c':
-    trySymbol(input);
     return;
   }
 
@@ -97,6 +58,10 @@ main(int argc, char **argv)
   while (sys_loopRun()) {
     sys_inputPoll(inputEvent);
     sys_notifyPoll(notifyEvent);
+
+    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+      functor_invoke(dlfnSymbols[i].fnctor);
+    }
     sys_loopSync();
   }
   sys_notifyShutdown();

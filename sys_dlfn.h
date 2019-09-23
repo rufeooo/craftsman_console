@@ -12,8 +12,8 @@ typedef struct {
 } Symbol_t;
 
 static const int MAX_SYMBOLS = 32;
-extern Symbol_t symbols[MAX_SYMBOLS];
-extern int usedSymbols;
+extern Symbol_t dlfnSymbols[MAX_SYMBOLS];
+extern int dlfnUsedSymbols;
 
 Functor_t sys_dlfnGet(const char *name);
 void sys_dlfnCall(const char *name);
