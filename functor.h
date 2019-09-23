@@ -22,9 +22,9 @@ functor_init(FuncPointer fp)
 {
   return (Functor_t){ .call = fp };
 }
-__attribute__((always_inline)) inline size_t
-functor_invoke(Functor_t *fnctor)
-{
-  return fnctor->call(fnctor->param[0], fnctor->param[1], fnctor->param[2]);
-}
 
+__attribute__((always_inline)) inline size_t
+functor_invoke(Functor_t fnctor)
+{
+  return fnctor.call(fnctor.param[0], fnctor.param[1], fnctor.param[2]);
+}

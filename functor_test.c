@@ -117,13 +117,13 @@ test_fnctor_i(Functor_t f)
 {
   for (int i = 0; i < 4; ++i) {
     f.param[0].i = i;
-    functor_invoke(&f);
+    functor_invoke(f);
   }
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       f.param[0].i = i;
       f.param[1].i = j;
-      functor_invoke(&f);
+      functor_invoke(f);
     }
   }
   for (int i = 0; i < 2; ++i) {
@@ -132,7 +132,7 @@ test_fnctor_i(Functor_t f)
         f.param[0].i = i;
         f.param[1].i = j;
         f.param[2].i = k;
-        functor_invoke(&f);
+        functor_invoke(f);
       }
     }
   }
@@ -147,13 +147,13 @@ test_fnctor_p(Functor_t f)
   };
   for (int i = 0; i < 4; ++i) {
     f.param[0].p = foo[i];
-    functor_invoke(&f);
+    functor_invoke(f);
   }
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       f.param[0].p = foo[i];
       f.param[1].p = foo[3 + j];
-      functor_invoke(&f);
+      functor_invoke(f);
     }
   }
   for (int i = 0; i < 2; ++i) {
@@ -162,7 +162,7 @@ test_fnctor_p(Functor_t f)
         f.param[0].p = foo[i];
         f.param[1].p = foo[2 + j];
         f.param[2].p = foo[4 + k];
-        functor_invoke(&f);
+        functor_invoke(f);
       }
     }
   }
@@ -178,14 +178,14 @@ test_fnctor_mix2(Functor_t fip, Functor_t fpi)
     for (int j = 0; j < 3; ++j) {
       fip.param[0].i = i + 1;
       fip.param[1].p = foo[j];
-      functor_invoke(&fip);
+      functor_invoke(fip);
     }
   }
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       fpi.param[0].p = foo[i];
       fpi.param[1].i = j + 1;
-      functor_invoke(&fpi);
+      functor_invoke(fpi);
     }
   }
 }
@@ -204,8 +204,20 @@ test_fnctor_mix3()
   for (int base = 0; base < ARRAY_LENGTH(mix3); ++base) {
     Functor_t f = mix3[base];
 
-    //TODO
+    // TODO
   }
+}
+
+void
+api_call(Functor_t f)
+{
+  functor_invoke(f);
+}
+
+void
+manual_call(Functor_t f)
+{
+  f.call(f.param[0], f.param[1], f.param[2]);
 }
 
 int
@@ -216,8 +228,14 @@ main(int argc, char **argv)
   Functor_t f = functor_init(test);
   f.param[0].i = 35;
   f.param[2].i = 13;
+
+  // asm review
+  api_call(f);
+  manual_call(f);
+
+  // Tests
   for (int i = 0; i < OneMil; ++i) {
-    functor_invoke(&f);
+    functor_invoke(f);
   }
   uint64_t end1 = rdtsc();
   for (int i = 0; i < OneMil; ++i) {
