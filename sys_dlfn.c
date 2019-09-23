@@ -36,7 +36,8 @@ void
 sys_dlfnPrintSymbols()
 {
   for (int i = 0; i < dlfnUsedSymbols; ++i) {
-    printf("%s: %p\n", dlfnSymbols[i].name, (void *) dlfnSymbols[i].fnctor.call);
+    printf("%s: %p\n", dlfnSymbols[i].name,
+           (void *) dlfnSymbols[i].fnctor.call);
   }
 }
 
@@ -69,6 +70,8 @@ parseSymtab(void *addr, void *symtab, void *strtab)
   ElfW(Sym *) iter = symtab;
   for (; (void *) iter < strtab; ++iter) {
     if (ELF64_ST_TYPE(iter->st_info) != STT_FUNC)
+      continue;
+    if (iter->st_size == 0)
       continue;
     Symbol_t s = { .name = &strtab[iter->st_name],
                    .fnctor = functor_init((void *) (addr + iter->st_value)) };

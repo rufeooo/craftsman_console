@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 size_t tick;
@@ -10,3 +11,8 @@ game_tick()
   return tick;
 }
 
+void
+update()
+{
+  printf("tick %zu\n", tick);
+}
