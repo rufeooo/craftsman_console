@@ -12,12 +12,15 @@
 #include "sys_notify.h"
 
 static const char *dlpath = "code/feature.so";
+static bool simulation = true;
 
 void
 prompt()
 {
   sys_dlfnPrintSymbols();
-  puts("(q)uit >");
+  if (!simulation)
+    puts("Simulation is disabled.");
+  puts("(q)uit (s)imulation>");
 }
 
 void
@@ -26,6 +29,9 @@ inputEvent(size_t len, char *input)
   switch (input[0]) {
   case 'q':
     sys_loopHalt();
+    return;
+  case 's':
+    simulation = !simulation;
     return;
   }
 
@@ -60,6 +66,9 @@ main(int argc, char **argv)
   while (sys_loopRun()) {
     sys_inputPoll(inputEvent);
     sys_notifyPoll(notifyEvent);
+
+    if (!simulation)
+      continue;
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
       functor_invoke(dlfnSymbols[i].fnctor);
