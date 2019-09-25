@@ -117,8 +117,10 @@ main(int argc, char **argv)
     sys_inputPoll(inputEvent);
     sys_notifyPoll(notifyEvent);
 
-    if (!simulation)
+    if (!simulation) {
+      sys_loopPause();
       continue;
+    }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
       functor_invoke(dlfnSymbols[i].fnctor);
