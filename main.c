@@ -12,7 +12,7 @@
 #include "sys_notify.h"
 
 static const char *dlpath = "code/feature.so";
-static bool simulation = true;
+static bool simulation = false;
 
 void
 prompt()
@@ -20,7 +20,54 @@ prompt()
   sys_dlfnPrintSymbols();
   if (!simulation)
     puts("Simulation is disabled.");
-  puts("(q)uit (s)imulation>");
+  puts("(q)uit (s)imulation (a)pply>");
+}
+
+void
+apply_param(const char *param, Param_t *p)
+{
+  uint64_t val = strtol(param, 0, 0);
+  if (val) {
+    printf("param %s val %lu\n", param, val);
+    p->i = val;
+  } else { // TODO
+    printf("string param unhandled %s\n", param);
+  }
+}
+
+// apply <fn> <p1> <p2> <p3> <...>
+void
+apply(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 6;
+  char *iter = input;
+  char *end = input + len;
+  char *token[TOKEN_COUNT] = { input };
+  int tc = 1;
+
+  for (; iter < end && tc < TOKEN_COUNT; ++iter) {
+    if (*iter == ' ') {
+      *iter = 0;
+      token[tc++] = iter + 1;
+    }
+  }
+
+  if (tc < 2) {
+    puts("Usage: apply <func> <param1> <param2> <param3>");
+    return;
+  }
+
+  Functor_t *f = sys_dlfnGetSymbol(token[1]);
+  if (!f) {
+    printf("Failure to apply: function not found (%s).\n", token[1]);
+    return;
+  }
+  for (int pi = 0; pi < 3; ++pi) {
+    int ti = 2 + pi;
+    if (ti >= tc)
+      break;
+    apply_param(token[ti], &f->param[pi]);
+  }
 }
 
 void
@@ -32,6 +79,9 @@ inputEvent(size_t len, char *input)
     return;
   case 's':
     simulation = !simulation;
+    return;
+  case 'a':
+    apply(len, input);
     return;
   }
 

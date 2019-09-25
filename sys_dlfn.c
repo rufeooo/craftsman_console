@@ -74,16 +74,16 @@ sys_dlfnCall(const char *name)
   }
 }
 
-Functor_t
-sys_dlfnGet(const char *name)
+Functor_t *
+sys_dlfnGetSymbol(const char *name)
 {
   for (int i = 0; i < dlfnUsedSymbols; ++i) {
     if (strcmp(name, dlfnSymbols[i].name) == 0) {
-      return dlfnSymbols[i].fnctor;
+      return &dlfnSymbols[i].fnctor;
     }
   }
 
-  return (Functor_t){};
+  return 0;
 }
 
 static void
