@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "macro.h"
 #include "rdtsc.h"
 
 // Pure functions
@@ -46,11 +47,14 @@ void
 sys_loopPrintStatus()
 {
   clock_t clockElapsed = clock() - clockStart;
-  uint64_t tscElapsed = rdtsc() - tscStart;
+  uint64_t elapsedMs = clockElapsed / (CLOCKS_PER_SEC / 1000);
+  printf("#%u frame %lu ms by clock\n", frame, elapsedMs);
 
-  printf("#%u frame %lu ms duration %lu ms by tsc %lu tscPerMs\n", frame,
-         clockElapsed / (CLOCKS_PER_SEC / 1000), tscElapsed / tscPerMs,
-         tscPerMs);
+  uint64_t tscEndEstimate = tscStart + (tscPerMs * elapsedMs);
+  uint64_t tscDrift = tscEndEstimate - tsc;
+  uint64_t tscDriftMs = tscDrift / tscPerMs;
+  printf("%lu tsc %lu tscEnd %lu tscDrift %lu tscPerMs %lu ms of drift\n ",
+         tsc, tscEndEstimate, tscDrift, tscPerMs, tscDriftMs);
 }
 
 bool
@@ -64,10 +68,12 @@ sys_loopSync()
 {
   ++frame;
   for (;;) {
-    if (rdtsc() - tsc >= tscPerFrame)
+    uint64_t now = rdtsc();
+    if (now - tsc >= tscPerFrame) {
+      tsc = MIN(tsc + tscPerFrame, now);
       break;
+    }
   }
-  tsc += tscPerFrame;
 }
 
 void
