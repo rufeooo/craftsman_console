@@ -10,6 +10,7 @@
 #include "sys_input.h"
 #include "sys_loop.c"
 #include "sys_notify.h"
+#include "sys_record.h"
 
 static const char *dlpath = "code/feature.so";
 static bool simulation = false;
@@ -73,6 +74,14 @@ apply(size_t len, char *input)
 void
 inputEvent(size_t len, char *input)
 {
+  // Never record playback requests
+  if (input[0] == 'p') {
+    sys_recordPlayback(inputEvent);
+    return;
+  }
+
+  sys_recordAppend(len, input);
+
   switch (input[0]) {
   case 'q':
     sys_loopHalt();
@@ -97,6 +106,7 @@ notifyEvent(int idx, const struct inotify_event *event)
 
   sys_dlfnClose();
   sys_dlfnOpen();
+  sys_recordPlayback(inputEvent);
 
   prompt();
 }
@@ -111,6 +121,7 @@ main(int argc, char **argv)
   sys_notifyInit(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
+  sys_recordInit();
   sys_inputInit();
   prompt();
   while (sys_loopRun()) {
@@ -130,6 +141,7 @@ main(int argc, char **argv)
   sys_notifyShutdown();
   sys_dlfnShutdown();
   sys_inputShutdown();
+  sys_recordShutdown();
   sys_loopShutdown();
   sys_loopPrintStatus();
 
