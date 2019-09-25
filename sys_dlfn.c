@@ -32,6 +32,28 @@ addSymbol(Symbol_t sym)
   dlfnSymbols[dlfnUsedSymbols++] = sym;
 }
 
+int
+symbolOrdering(const void *lhs, const void *rhs)
+{
+  const Symbol_t *lhv = lhs;
+  const Symbol_t *rhv = rhs;
+  size_t lhfn = (size_t) lhv->fnctor.call;
+  size_t rhfn = (size_t) rhv->fnctor.call;
+
+  if (lhfn < rhfn)
+    return -1;
+  else if (lhfn > rhfn)
+    return 1;
+  else
+    return 0;
+}
+
+void
+sortSymbols()
+{
+  qsort(dlfnSymbols, dlfnUsedSymbols, sizeof(dlfnSymbols[0]), symbolOrdering);
+}
+
 void
 sys_dlfnPrintSymbols()
 {
@@ -148,6 +170,9 @@ sys_dlfnOpen()
     }
     iter = iter->l_next;
   }
+
+  // Functors follow call ordering of the address space
+  sortSymbols();
 
   return true;
 }
