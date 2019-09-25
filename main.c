@@ -13,7 +13,8 @@
 #include "sys_record.h"
 
 static const char *dlpath = "code/feature.so";
-static bool simulation = false;
+static const bool simulationDefault = false;
+static bool simulation = simulationDefault;
 
 void
 prompt()
@@ -106,6 +107,7 @@ notifyEvent(int idx, const struct inotify_event *event)
 
   sys_dlfnClose();
   sys_dlfnOpen();
+  simulation = simulationDefault;
   sys_recordPlayback(inputEvent);
 
   prompt();
