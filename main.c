@@ -15,6 +15,7 @@
 static const char *dlpath = "code/feature.so";
 static const bool simulationDefault = false;
 static bool simulation = simulationDefault;
+static bool exiting;
 
 void
 prompt()
@@ -22,7 +23,7 @@ prompt()
   sys_dlfnPrintSymbols();
   if (!simulation)
     puts("Simulation is disabled.");
-  puts("(q)uit (s)imulation (a)pply>");
+  puts("(q)uit (s)imulation (a)pply (r)eload>");
 }
 
 void
@@ -75,9 +76,14 @@ apply(size_t len, char *input)
 void
 inputEvent(size_t len, char *input)
 {
-  // Never record playback requests
-  if (input[0] == 'p') {
+  // These events are not recorded
+  switch (input[0]) {
+  case 'p':
     sys_recordPlayback(inputEvent);
+    return;
+  case 'r':
+    simulation = false;
+    sys_loopHalt();
     return;
   }
 
@@ -86,6 +92,7 @@ inputEvent(size_t len, char *input)
   switch (input[0]) {
   case 'q':
     simulation = false;
+    exiting = true;
     sys_loopHalt();
     return;
   case 's':
@@ -106,16 +113,12 @@ notifyEvent(int idx, const struct inotify_event *event)
   if (!strstr(dlpath, event->name))
     return;
 
-  sys_dlfnClose();
-  sys_dlfnOpen();
-  simulation = simulationDefault;
-  sys_recordPlayback(inputEvent);
-
-  prompt();
+  simulation = false;
+  sys_loopHalt();
 }
 
-int
-main(int argc, char **argv)
+void
+execute_simulation()
 {
   char *watchDirs[] = { "code" };
   uint64_t perf[MAX_SYMBOLS];
@@ -125,7 +128,8 @@ main(int argc, char **argv)
   sys_notifyInit(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
-  sys_recordInit();
+  simulation = simulationDefault;
+  sys_recordPlayback(inputEvent);
   sys_inputInit();
   prompt();
   while (sys_loopRun()) {
@@ -149,12 +153,21 @@ main(int argc, char **argv)
     puts("");
     sys_loopSync();
   }
+  sys_loopPrintStatus();
+  sys_loopShutdown();
   sys_notifyShutdown();
   sys_dlfnShutdown();
   sys_inputShutdown();
+}
+
+int
+main(int argc, char **argv)
+{
+  sys_recordInit();
+  while (!exiting) {
+    execute_simulation();
+  }
   sys_recordShutdown();
-  sys_loopShutdown();
-  sys_loopPrintStatus();
 
   return 0;
 }

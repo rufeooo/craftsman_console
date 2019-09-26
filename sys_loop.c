@@ -56,15 +56,19 @@ static uint64_t tsc;
 static uint32_t frame;
 static uint32_t pauseFrame;
 static bool running;
+static uint32_t runCount;
 
 // Implementation
 void
 sys_loopInit(uint8_t framerate)
 {
-  tscPerMs = getTscPerMs();
-  tscPerFrame = 1000 / framerate * tscPerMs;
-  clockStart = clock();
-  tsc = tscStart = rdtsc();
+  if (!tscPerMs) {
+    tscPerMs = getTscPerMs();
+    tscPerFrame = 1000 / framerate * tscPerMs;
+    clockStart = clock();
+    tscStart = rdtsc();
+  }
+  tsc = rdtsc();
   frame = 0;
   running = true;
 }
@@ -72,6 +76,7 @@ sys_loopInit(uint8_t framerate)
 void
 sys_loopPrintStatus()
 {
+  printf("--%u loop %s--\n", runCount, running ? "Running" : "Terminating");
   clock_t clockElapsed = clock() - clockStart;
   uint64_t elapsedMs = clockElapsed / (CLOCKS_PER_SEC / 1000);
   printf("#%u frame #%u pauseFrame %lu ms by clock\n", frame, pauseFrame,
@@ -125,5 +130,6 @@ sys_loopHalt()
 void
 sys_loopShutdown()
 {
+  ++runCount;
 }
 
