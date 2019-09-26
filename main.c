@@ -85,6 +85,7 @@ inputEvent(size_t len, char *input)
 
   switch (input[0]) {
   case 'q':
+    simulation = false;
     sys_loopHalt();
     return;
   case 's':
