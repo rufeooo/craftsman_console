@@ -93,6 +93,8 @@ parseSymtab(void *addr, void *symtab, void *strtab)
   for (; (void *) iter < strtab; ++iter) {
     if (ELF64_ST_TYPE(iter->st_info) != STT_FUNC)
       continue;
+    if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL)
+      continue;
     if (iter->st_size == 0)
       continue;
     Symbol_t s = { .name = &strtab[iter->st_name],
