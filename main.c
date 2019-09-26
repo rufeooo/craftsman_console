@@ -118,6 +118,7 @@ int
 main(int argc, char **argv)
 {
   char *watchDirs[] = { "code" };
+  uint64_t perf[MAX_SYMBOLS];
 
   sys_loopInit(10);
   sys_loopPrintStatus();
@@ -137,8 +138,15 @@ main(int argc, char **argv)
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
+      uint64_t startCall = rdtsc();
       functor_invoke(dlfnSymbols[i].fnctor);
+      uint64_t endCall = rdtsc();
+      perf[i] = endCall - startCall;
     }
+    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+      printf("%s: %lu ", dlfnSymbols[i].name, perf[i]);
+    }
+    puts("");
     sys_loopSync();
   }
   sys_notifyShutdown();
