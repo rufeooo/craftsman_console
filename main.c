@@ -11,6 +11,8 @@
 #include "sys_loop.c"
 #include "sys_notify.h"
 #include "sys_record.h"
+#include "sys_stats.h"
+#include "xs_float.h"
 
 static const char *dlpath = "code/feature.so";
 static const bool simulationDefault = false;
@@ -122,6 +124,8 @@ execute_simulation()
 {
   char *watchDirs[] = { "code" };
   uint64_t perf[MAX_SYMBOLS];
+  Stats_t perfStats[MAX_SYMBOLS];
+  memset(perfStats, 0, sizeof(perfStats));
 
   sys_loopInit(10);
   sys_loopPrintStatus();
@@ -148,7 +152,20 @@ execute_simulation()
       perf[i] = endCall - startCall;
     }
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
-      printf("%s: %lu ", dlfnSymbols[i].name, perf[i]);
+      int32_t interval = perf[i] >> 4;
+      if ((perf[i] >> 4) ^ interval) {
+        printf("WARNING: %s exceeded time measurement threshold.\n",
+               dlfnSymbols[i].name);
+        continue;
+      }
+      double fpInterval = xs_float(interval);
+      sys_statsAddSample(&perfStats[i], fpInterval * 16.0);
+    }
+
+    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+      printf("%-20s\t%5.2e mean ± %4.02f%%\n", dlfnSymbols[i].name,
+             sys_statsMean(&perfStats[i]),
+             100.0 * sys_statsRsDev(&perfStats[i]));
     }
     puts("");
     sys_loopSync();
