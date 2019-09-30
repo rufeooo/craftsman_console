@@ -1,8 +1,10 @@
-// original source: http://stereopsis.com/sree/fpu2006.html
-// Ported to C ( 2019 ANewton )
+// # Float to Int / Int to Float Conversion Methods
+// - original source: http://stereopsis.com/sree/fpu2006.html
+// - Ported to C ( 2019 ANewton )
 #pragma once
 
-#include <stdbool.h>
+#include "xs_float.h"
+
 #include <stdint.h>
 
 #ifndef _xs_DEFAULT_CONVERSION
@@ -28,18 +30,18 @@ const double _xs_doublemagicdelta = 0.0f;
 const double _xs_doublemagicroundeps =
   (.5f - _xs_doublemagicdelta); // almost .5f = .5f - 1e^(number of exp bit)
 
-int32_t
+static inline int32_t
 xs_sign(double a)
 {
   return ((int32_t *) &a)[_xs_iexp_] & 0x80000000;
 }
-void
+static inline void
 xs_signxor(double *a, double b)
 {
   ((int32_t *) a)[_xs_iexp_] ^= xs_sign(b);
 }
 
-int32_t
+static inline int32_t
 xs_fistp_int(double val)
 {
 #if _xs_DEFAULT_CONVERSION == 0
@@ -50,7 +52,7 @@ xs_fistp_int(double val)
 #endif
 }
 
-double
+static inline double
 xs_float(int32_t val)
 {
 #if _xs_DEFAULT_CONVERSION == 0
@@ -62,7 +64,7 @@ xs_float(int32_t val)
 #endif
 }
 
-int32_t
+static inline int32_t
 xs_int(double val)
 {
 #if _xs_DEFAULT_CONVERSION == 0
@@ -74,7 +76,7 @@ xs_int(double val)
 #endif
 }
 
-int32_t
+static inline int32_t
 xs_floor_int(double val)
 {
 #if _xs_DEFAULT_CONVERSION == 0
@@ -85,7 +87,7 @@ xs_floor_int(double val)
 #endif
 }
 
-int32_t
+static inline int32_t
 xs_ceil_int(double val)
 {
 #if _xs_DEFAULT_CONVERSION == 0
@@ -96,7 +98,7 @@ xs_ceil_int(double val)
 #endif
 }
 
-int32_t
+static inline int32_t
 xs_round_int(double val)
 {
 #if _xs_DEFAULT_CONVERSION == 0
