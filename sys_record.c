@@ -4,69 +4,73 @@
 #include "macro.h"
 #include "sys_record.h"
 
-static char *restrict buf;
-static int allocBuf;
-static int usedBuf;
-static bool playback;
+typedef struct Record_s {
+  char *restrict buf;
+  int allocBuf;
+  int usedBuf;
+  bool playback;
+} Record_t;
 
-bool
+Record_t *
 sys_recordInit()
 {
-  usedBuf = 0;
-  allocBuf = 4 * 1024;
-  free(buf);
-  buf = malloc(allocBuf);
+  Record_t *rec = calloc(sizeof(Record_t), 1);
+  rec->usedBuf = 0;
+  rec->allocBuf = 4 * 1024;
+  free(rec->buf);
+  rec->buf = malloc(rec->allocBuf);
 
-  return buf != 0;
+  return rec;
 }
 
 static bool
-sys_recordRealloc(int bytesNeeded)
+sys_recordRealloc(Record_t *rec, int bytesNeeded)
 {
   if (bytesNeeded <= 0)
     return true;
 
-  char *const newBuf = realloc(buf, allocBuf * 2);
+  char *const newBuf = realloc(rec->buf, rec->allocBuf * 2);
   if (!newBuf)
     return false;
 
-  buf = newBuf;
-  allocBuf *= 2;
+  rec->buf = newBuf;
+  rec->allocBuf *= 2;
 
   return true;
 }
 
 bool
-sys_recordAppend(size_t len, const char *input)
+sys_recordAppend(Record_t *rec, size_t len, const char *input)
 {
-  if (playback)
+  if (rec->playback)
     return false;
-  if (!sys_recordRealloc((len + usedBuf + 1) - allocBuf))
+  if (!sys_recordRealloc(rec, (len + rec->usedBuf + 1) - rec->allocBuf))
     return false;
 
-  memcpy(buf + usedBuf, input, len);
-  usedBuf += len;
-  buf[usedBuf++] = 0;
+  memcpy(rec->buf + rec->usedBuf, input, len);
+  rec->usedBuf += len;
+  rec->buf[rec->usedBuf++] = 0;
 
   return true;
 }
 
 void
-sys_recordPlayback(sys_recordEvent handler)
+sys_recordPlayback(Record_t *rec, sys_recordEvent handler)
 {
-  playback = true;
+  rec->playback = true;
   size_t length = { 0 };
-  for (int i = 0; i < usedBuf; i += (length + 1)) {
-    length = strlen(buf + i);
-    handler(length, buf + i);
+  for (int i = 0; i < rec->usedBuf; i += (length + 1)) {
+    length = strlen(rec->buf + i);
+    handler(length, rec->buf + i);
   }
-  playback = false;
+  rec->playback = false;
 }
 
 void
-sys_recordShutdown()
+sys_recordShutdown(Record_t *rec)
 {
-  usedBuf = 0;
-  allocBuf = 0;
-  FREE(buf);
+  rec->usedBuf = 0;
+  rec->allocBuf = 0;
+  FREE(rec->buf);
+  FREE(rec);
 }

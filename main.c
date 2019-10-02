@@ -18,6 +18,7 @@ static const char *dlpath = "code/feature.so";
 static const bool simulationDefault = false;
 static bool simulation = simulationDefault;
 static bool exiting;
+static Record_t *recording;
 
 void
 prompt()
@@ -81,7 +82,7 @@ inputEvent(size_t len, char *input)
   // These events are not recorded
   switch (input[0]) {
   case 'p':
-    sys_recordPlayback(inputEvent);
+    sys_recordPlayback(recording, inputEvent);
     return;
   case 'r':
     simulation = false;
@@ -89,7 +90,7 @@ inputEvent(size_t len, char *input)
     return;
   }
 
-  sys_recordAppend(len, input);
+  sys_recordAppend(recording, len, input);
 
   switch (input[0]) {
   case 'q':
@@ -133,7 +134,7 @@ execute_simulation()
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
   simulation = simulationDefault;
-  sys_recordPlayback(inputEvent);
+  sys_recordPlayback(recording, inputEvent);
   sys_inputInit();
   prompt();
   while (sys_loopRun()) {
@@ -180,11 +181,11 @@ execute_simulation()
 int
 main(int argc, char **argv)
 {
-  sys_recordInit();
+  recording = sys_recordInit();
   while (!exiting) {
     execute_simulation();
   }
-  sys_recordShutdown();
+  sys_recordShutdown(recording);
 
   return 0;
 }
