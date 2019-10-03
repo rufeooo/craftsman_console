@@ -134,7 +134,8 @@ execute_simulation()
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
   simulation = simulationDefault;
-  sys_recordPlayback(recording, inputEvent);
+  sys_recordSeekW(recording, 0u);
+  sys_recordPlaybackAll(recording, inputEvent);
   sys_inputInit();
   prompt();
   while (sys_loopRun()) {
@@ -181,11 +182,11 @@ execute_simulation()
 int
 main(int argc, char **argv)
 {
-  recording = sys_recordInit();
+  recording = sys_recordAlloc();
   while (!exiting) {
     execute_simulation();
   }
-  sys_recordShutdown(recording);
+  sys_recordFree(recording);
 
   return 0;
 }
