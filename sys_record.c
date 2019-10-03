@@ -105,6 +105,12 @@ sys_recordSeekW(Record_t *rec, size_t nth)
   rec->writeOffset = i;
 }
 
+size_t
+sys_recordLength(Record_t *rec)
+{
+  return rec->usedBuf;
+}
+
 Record_t *
 sys_recordClone(Record_t *rec)
 {
