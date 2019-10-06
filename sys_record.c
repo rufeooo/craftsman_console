@@ -111,6 +111,18 @@ sys_recordLength(Record_t *rec)
   return rec->usedBuf;
 }
 
+size_t
+sys_recordOffsetR(Record_t *rec)
+{
+  return rec->readOffset;
+}
+
+size_t
+sys_recordOffsetW(Record_t *rec)
+{
+  return rec->writeOffset;
+}
+
 Record_t *
 sys_recordClone(Record_t *rec)
 {
@@ -119,6 +131,12 @@ sys_recordClone(Record_t *rec)
   clone->buf = malloc(clone->allocBuf);
   memcpy(clone->buf, rec->buf, rec->usedBuf);
   return clone;
+}
+
+void
+sys_recordReset(Record_t *rec)
+{
+  rec->readOffset = rec->writeOffset = rec->usedBuf = 0;
 }
 
 void

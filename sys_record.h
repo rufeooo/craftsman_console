@@ -13,8 +13,12 @@ void sys_recordPlaybackAll(Record_t *rec, sys_recordEvent handler);
 bool sys_recordPlayback(Record_t *rec, sys_recordEvent handler);
 void sys_recordSeekW(Record_t *rec, size_t nth);
 void sys_recordSeekR(Record_t *rec, size_t nth);
-size_t sys_recordLength(Record_t *rec);
 Record_t *sys_recordClone(Record_t *rec);
+void sys_recordReset(Record_t *rec);
 void sys_recordFree(Record_t *rec);
+
+size_t sys_recordLength(Record_t *rec);
+size_t sys_recordOffsetR(Record_t *rec);
+size_t sys_recordOffsetW(Record_t *rec);
 
 void sys_recordDebug(Record_t *rec);
