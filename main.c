@@ -121,6 +121,17 @@ notifyEvent(int idx, const struct inotify_event *event)
 }
 
 void
+print_runtime_perf(size_t length, Stats_t perfStats[length])
+{
+  for (int i = 0; i < length; ++i) {
+    printf("%-20s\t%5.2e mean ± %4.02f%%\n", dlfnSymbols[i].name,
+           sys_statsMean(&perfStats[i]),
+           100.0 * sys_statsRsDev(&perfStats[i]));
+  }
+  puts("");
+}
+
+void
 execute_simulation()
 {
   char *watchDirs[] = { "code" };
@@ -164,14 +175,9 @@ execute_simulation()
       sys_statsAddSample(&perfStats[i], fpInterval * 16.0);
     }
 
-    for (int i = 0; i < dlfnUsedSymbols; ++i) {
-      printf("%-20s\t%5.2e mean ± %4.02f%%\n", dlfnSymbols[i].name,
-             sys_statsMean(&perfStats[i]),
-             100.0 * sys_statsRsDev(&perfStats[i]));
-    }
-    puts("");
     sys_loopSync();
   }
+  print_runtime_perf(dlfnUsedSymbols, perfStats);
   sys_loopPrintStatus();
   sys_loopShutdown();
   sys_notifyShutdown();
