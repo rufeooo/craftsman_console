@@ -12,7 +12,6 @@
 #include "sys_notify.h"
 #include "sys_record.h"
 #include "sys_stats.h"
-#include "xs_float.h"
 
 static const char *dlpath = "code/feature.so";
 static const bool simulationDefault = false;
@@ -124,8 +123,9 @@ void
 print_runtime_perf(size_t length, Stats_t perfStats[length])
 {
   for (int i = 0; i < length; ++i) {
-    printf("%-20s\t%5.2e mean ± %4.02f%%\n", dlfnSymbols[i].name,
-           sys_statsMean(&perfStats[i]),
+    printf("%-20s\t%5.2e min\t%5.2e max\t%5.2e mean ± %4.02f%%\t\n",
+           dlfnSymbols[i].name, sys_statsMin(&perfStats[i]),
+           sys_statsMax(&perfStats[i]), sys_statsMean(&perfStats[i]),
            100.0 * sys_statsRsDev(&perfStats[i]));
   }
   puts("");
@@ -137,7 +137,9 @@ execute_simulation()
   char *watchDirs[] = { "code" };
   uint64_t perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
-  memset(perfStats, 0, sizeof(perfStats));
+  for (int i = 0; i < MAX_SYMBOLS; ++i) {
+    sys_statsInit(&perfStats[i]);
+  }
 
   sys_loopInit(10);
   sys_loopPrintStatus();
@@ -164,15 +166,9 @@ execute_simulation()
       uint64_t endCall = rdtsc();
       perf[i] = endCall - startCall;
     }
+
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
-      int32_t interval = perf[i] >> 4;
-      if ((perf[i] >> 4) ^ interval) {
-        printf("WARNING: %s exceeded time measurement threshold.\n",
-               dlfnSymbols[i].name);
-        continue;
-      }
-      double fpInterval = xs_float(interval);
-      sys_statsAddSample(&perfStats[i], fpInterval * 16.0);
+      sys_statsAddSample(&perfStats[i], perf[i]);
     }
 
     sys_loopSync();

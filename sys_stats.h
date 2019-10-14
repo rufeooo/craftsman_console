@@ -1,13 +1,20 @@
 
 #pragma once
 
+#include <stdint.h>
+
 typedef struct {
   double moments[3];
+  uint64_t min;
+  uint64_t max;
 } Stats_t;
 
+void sys_statsInit(Stats_t *accum);
 double sys_statsSamples(Stats_t *accum);
 double sys_statsMean(Stats_t *accum);
 double sys_statsRsDev(Stats_t *accum);
 double sys_statsVariance(Stats_t *accum);
+double sys_statsMin(Stats_t *accum);
+double sys_statsMax(Stats_t *accum);
 
-void sys_statsAddSample(Stats_t *accum, double newValue);
+void sys_statsAddSample(Stats_t *accum, uint64_t sample);
