@@ -25,7 +25,7 @@ prompt()
   sys_dlfnPrintSymbols();
   if (!simulation)
     puts("Simulation is disabled.");
-  puts("(q)uit (s)imulation (a)pply (r)eload>");
+  puts("(q)uit (s)imulation (b)enchmark (a)pply (r)eload>");
 }
 
 void
@@ -76,6 +76,40 @@ apply(size_t len, char *input)
 }
 
 void
+print_runtime_perf(size_t length, Stats_t perfStats[length])
+{
+  for (int i = 0; i < length; ++i) {
+    printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
+           dlfnSymbols[i].name, sys_statsMin(&perfStats[i]),
+           sys_statsMax(&perfStats[i]), sys_statsMean(&perfStats[i]),
+           100.0 * sys_statsRsDev(&perfStats[i]));
+  }
+  puts("");
+}
+
+void
+do_bench()
+{
+  Stats_t perfStats[MAX_SYMBOLS];
+  for (int i = 0; i < MAX_SYMBOLS; ++i) {
+    sys_statsInit(&perfStats[i]);
+  }
+  const int calls = 1000;
+  for (int h = 0; h < calls; ++h) {
+    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+      uint64_t startCall = rdtsc();
+      for (int j = 0; j < calls; ++j) {
+        functor_invoke(dlfnSymbols[i].fnctor);
+      }
+      uint64_t endCall = rdtsc();
+      sys_statsAddSample(&perfStats[i], endCall - startCall);
+    }
+  }
+  printf("--per %d calls\n", calls);
+  print_runtime_perf(dlfnUsedSymbols, perfStats);
+}
+
+void
 inputEvent(size_t len, char *input)
 {
   // These events are not recorded
@@ -86,6 +120,9 @@ inputEvent(size_t len, char *input)
   case 'r':
     simulation = false;
     sys_loopHalt();
+    return;
+  case 'b':
+    do_bench();
     return;
   }
 
@@ -117,18 +154,6 @@ notifyEvent(int idx, const struct inotify_event *event)
 
   simulation = false;
   sys_loopHalt();
-}
-
-void
-print_runtime_perf(size_t length, Stats_t perfStats[length])
-{
-  for (int i = 0; i < length; ++i) {
-    printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-           dlfnSymbols[i].name, sys_statsMin(&perfStats[i]),
-           sys_statsMax(&perfStats[i]), sys_statsMean(&perfStats[i]),
-           100.0 * sys_statsRsDev(&perfStats[i]));
-  }
-  puts("");
 }
 
 void
