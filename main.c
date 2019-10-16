@@ -33,7 +33,7 @@ apply_param(const char *param, Param_t *p)
 {
   uint64_t val = strtol(param, 0, 0);
   if (val) {
-    printf("param %s val %lu\n", param, val);
+    printf("param %s val %" PRIu64 "\n", param, val);
     p->i = val;
   } else { // TODO
     printf("string param unhandled %s\n", param);
@@ -123,7 +123,7 @@ void
 print_runtime_perf(size_t length, Stats_t perfStats[length])
 {
   for (int i = 0; i < length; ++i) {
-    printf("%-20s\t%5.2e min\t%5.2e max\t%5.2e mean ± %4.02f%%\t\n",
+    printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
            dlfnSymbols[i].name, sys_statsMin(&perfStats[i]),
            sys_statsMax(&perfStats[i]), sys_statsMean(&perfStats[i]),
            100.0 * sys_statsRsDev(&perfStats[i]));
