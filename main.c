@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "float.h"
 #include "functor.h"
 #include "macro.h"
 #include "sys_dlfn.h"
@@ -102,7 +103,7 @@ do_bench()
         functor_invoke(dlfnSymbols[i].fnctor);
       }
       uint64_t endCall = rdtsc();
-      sys_statsAddSample(&perfStats[i], endCall - startCall);
+      sys_statsAddSample(&perfStats[i], to_double(endCall - startCall));
     }
   }
   printf("--per %d calls\n", calls);
@@ -160,7 +161,7 @@ void
 execute_simulation()
 {
   char *watchDirs[] = { "code" };
-  uint64_t perf[MAX_SYMBOLS];
+  double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
   for (int i = 0; i < MAX_SYMBOLS; ++i) {
     sys_statsInit(&perfStats[i]);
@@ -189,7 +190,7 @@ execute_simulation()
       uint64_t startCall = rdtsc();
       functor_invoke(dlfnSymbols[i].fnctor);
       uint64_t endCall = rdtsc();
-      perf[i] = endCall - startCall;
+      perf[i] = to_double(endCall - startCall);
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
@@ -198,6 +199,7 @@ execute_simulation()
 
     sys_loopSync();
   }
+  puts("--simulation performance");
   print_runtime_perf(dlfnUsedSymbols, perfStats);
   sys_loopPrintStatus();
   sys_loopShutdown();

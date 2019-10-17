@@ -1,14 +1,6 @@
 
 #include "sys_stats.h"
 #include "macro.h"
-#include "xs_float.h"
-
-static double
-tsc_to_float(uint64_t tsc)
-{
-  int32_t interval = tsc >> 4;
-  return xs_float(interval) * 16.0;
-}
 
 void
 sys_statsInit(Stats_t *accum)
@@ -48,13 +40,13 @@ sys_statsVariance(Stats_t *accum)
 double
 sys_statsMin(Stats_t *accum)
 {
-  return tsc_to_float(accum->min);
+  return accum->min;
 }
 
 double
 sys_statsMax(Stats_t *accum)
 {
-  return tsc_to_float(accum->max);
+  return accum->max;
 }
 
 static void
@@ -74,9 +66,9 @@ add_sample(Stats_t *accum, double newValue)
 }
 
 void
-sys_statsAddSample(Stats_t *accum, uint64_t sample)
+sys_statsAddSample(Stats_t *accum, double sample)
 {
-  add_sample(accum, tsc_to_float(sample));
+  add_sample(accum, sample);
   accum->max = MAX(sample, accum->max);
   accum->min = MIN(sample, accum->min);
 }
