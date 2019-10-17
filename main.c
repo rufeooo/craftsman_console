@@ -19,6 +19,8 @@ static const bool simulationDefault = false;
 static bool simulation = simulationDefault;
 static bool exiting;
 static Record_t *recording;
+static Functor_t apply_func[128];
+static size_t used_apply_func;
 
 void
 prompt()
@@ -29,6 +31,28 @@ prompt()
   puts("(q)uit (s)imulation (b)enchmark (a)pply (r)eload>");
 }
 
+size_t
+increment(size_t *val)
+{
+  *val += 1;
+  return 1;
+}
+
+size_t
+decrement(size_t *val)
+{
+  *val -= 1;
+  return 1;
+}
+
+bool
+add_apply_func(Functor_t fnctor)
+{
+  apply_func[used_apply_func] = fnctor;
+  ++used_apply_func;
+  return true;
+}
+
 void
 apply_param(const char *param, Param_t *p)
 {
@@ -36,6 +60,14 @@ apply_param(const char *param, Param_t *p)
   if (val) {
     printf("param %s val %" PRIu64 "\n", param, val);
     p->i = val;
+  } else if (param[0] == '+') {
+    printf("param %s increment\n", param);
+    Functor_t fnctor = { .call = increment, .param[0].p = &p->i };
+    add_apply_func(fnctor);
+  } else if (param[0] == '-') {
+    printf("param %s decrement\n", param);
+    Functor_t fnctor = { .call = decrement, .param[0].p = &p->i };
+    add_apply_func(fnctor);
   } else { // TODO
     printf("string param unhandled %s\n", param);
   }
@@ -89,7 +121,7 @@ print_runtime_perf(size_t length, Stats_t perfStats[length])
 }
 
 void
-do_bench()
+execute_benchmark()
 {
   Stats_t aggregate;
   sys_statsInit(&aggregate);
@@ -140,7 +172,7 @@ inputEvent(size_t len, char *input)
     sys_loopHalt();
     return;
   case 'b':
-    do_bench();
+    execute_benchmark();
     return;
   }
 
@@ -183,6 +215,8 @@ execute_simulation()
   for (int i = 0; i < MAX_SYMBOLS; ++i) {
     sys_statsInit(&perfStats[i]);
   }
+  memset(apply_func, 0, sizeof(apply_func));
+  used_apply_func = 0;
 
   sys_loopInit(10);
   sys_loopPrintStatus();
@@ -201,6 +235,10 @@ execute_simulation()
     if (!simulation) {
       sys_loopPause();
       continue;
+    }
+
+    for (int i = 0; i < used_apply_func; ++i) {
+      functor_invoke(apply_func[i]);
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
