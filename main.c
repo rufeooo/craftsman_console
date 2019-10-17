@@ -91,23 +91,40 @@ print_runtime_perf(size_t length, Stats_t perfStats[length])
 void
 do_bench()
 {
-  Stats_t perfStats[MAX_SYMBOLS];
-  for (int i = 0; i < MAX_SYMBOLS; ++i) {
-    sys_statsInit(&perfStats[i]);
-  }
-  const int calls = 1000;
-  for (int h = 0; h < calls; ++h) {
-    for (int i = 0; i < dlfnUsedSymbols; ++i) {
-      uint64_t startCall = rdtsc();
-      for (int j = 0; j < calls; ++j) {
-        functor_invoke(dlfnSymbols[i].fnctor);
-      }
-      uint64_t endCall = rdtsc();
-      sys_statsAddSample(&perfStats[i], to_double(endCall - startCall));
+  Stats_t aggregate;
+  sys_statsInit(&aggregate);
+
+  const int magnitudes = 10;
+  int calls = 1;
+  for (int h = 0; h < magnitudes; ++h) {
+    Stats_t perfStats[MAX_SYMBOLS];
+    for (int i = 0; i < MAX_SYMBOLS; ++i) {
+      sys_statsInit(&perfStats[i]);
     }
+
+    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+      double sum = 0;
+      for (int j = 0; j < calls; ++j) {
+        uint64_t startCall = rdtsc();
+        functor_invoke(dlfnSymbols[i].fnctor);
+        uint64_t endCall = rdtsc();
+        double duration = to_double(endCall - startCall);
+        sys_statsAddSample(&perfStats[i], duration);
+        sum += duration;
+      }
+      sys_statsAddSample(&aggregate, sum);
+    }
+
+    printf("--per 10e%d\n", h);
+    print_runtime_perf(dlfnUsedSymbols, perfStats);
+
+    if (aggregate.max > 10000000.0)
+      break;
+
+    calls *= 10;
   }
-  printf("--per %d calls\n", calls);
-  print_runtime_perf(dlfnUsedSymbols, perfStats);
+
+  puts("benchmark threshold reached.");
 }
 
 void
