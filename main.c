@@ -15,8 +15,8 @@
 #include "sys_stats.h"
 
 static const char *dlpath = "code/feature.so";
-static const bool simulationDefault = false;
-static bool simulation = simulationDefault;
+static const uint32_t simulationMax = UINT32_MAX;
+static uint32_t simulationGoal;
 static bool exiting;
 static Record_t *recording;
 static Functor_t apply_func[128];
@@ -26,7 +26,7 @@ void
 prompt()
 {
   sys_dlfnPrintSymbols();
-  if (!simulation)
+  if (!simulationGoal)
     puts("Simulation is disabled.");
   puts("(q)uit (s)imulation (b)enchmark (a)pply (r)eload>");
 }
@@ -168,7 +168,7 @@ inputEvent(size_t len, char *input)
     sys_recordPlayback(recording, inputEvent);
     return;
   case 'r':
-    simulation = false;
+    simulationGoal = 0;
     sys_loopHalt();
     return;
   case 'b':
@@ -180,12 +180,12 @@ inputEvent(size_t len, char *input)
 
   switch (input[0]) {
   case 'q':
-    simulation = false;
+    simulationGoal = 0;
     exiting = true;
     sys_loopHalt();
     return;
   case 's':
-    simulation = !simulation;
+    simulationGoal = simulationMax;
     return;
   case 'a':
     apply(len, input);
@@ -202,7 +202,7 @@ notifyEvent(int idx, const struct inotify_event *event)
   if (!strstr(dlpath, event->name))
     return;
 
-  simulation = false;
+  simulationGoal = 0;
   sys_loopHalt();
 }
 
@@ -223,7 +223,7 @@ execute_simulation()
   sys_notifyInit(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
-  simulation = simulationDefault;
+  simulationGoal = simulationMax;
   sys_recordSeekW(recording, 0u);
   sys_recordPlaybackAll(recording, inputEvent);
   sys_inputInit();
@@ -232,7 +232,7 @@ execute_simulation()
     sys_inputPoll(inputEvent);
     sys_notifyPoll(notifyEvent);
 
-    if (!simulation) {
+    if (simulationGoal <= sys_loopFrame()) {
       sys_loopPause();
       continue;
     }

@@ -97,6 +97,12 @@ sys_loopRun()
   return running;
 }
 
+uint32_t
+sys_loopFrame()
+{
+  return frame;
+}
+
 void
 sys_loopPause()
 {
