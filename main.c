@@ -38,6 +38,13 @@ increment(size_t *val)
 }
 
 size_t
+left_shift(size_t *val)
+{
+  *val <<= 1;
+  return 1;
+}
+
+size_t
 decrement(size_t *val)
 {
   *val -= 1;
@@ -66,6 +73,10 @@ apply_param(const char *param, Param_t *p)
   } else if (param[0] == '-') {
     printf("param %s decrement\n", param);
     Functor_t fnctor = { .call = decrement, .param[0].p = &p->i };
+    add_apply_func(fnctor);
+  } else if (param[0] == '<') {
+    printf("param %s left_shift\n", param);
+    Functor_t fnctor = {.call = left_shift, .param[0].p = &p->i };
     add_apply_func(fnctor);
   } else { // TODO
     printf("string param unhandled %s\n", param);
