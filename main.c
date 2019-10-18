@@ -26,8 +26,7 @@ void
 prompt()
 {
   sys_dlfnPrintSymbols();
-  if (!simulationGoal)
-    puts("Simulation is disabled.");
+  printf("Simulation will run until frame %d.\n", simulationGoal);
   puts("(q)uit (s)imulation (b)enchmark (a)pply (r)eload>");
 }
 
@@ -73,22 +72,49 @@ apply_param(const char *param, Param_t *p)
   }
 }
 
-// apply <fn> <p1> <p2> <p3> <...>
-void
-apply(size_t len, char *input)
+int
+tokenize(size_t len, char *input, size_t token_count,
+         char *token[token_count])
 {
-  const unsigned TOKEN_COUNT = 6;
   char *iter = input;
   char *end = input + len;
-  char *token[TOKEN_COUNT] = { input };
+  token[0] = input;
   int tc = 1;
 
-  for (; iter < end && tc < TOKEN_COUNT; ++iter) {
+  for (; iter < end && tc < token_count; ++iter) {
     if (*iter == ' ') {
       *iter = 0;
       token[tc++] = iter + 1;
     }
   }
+
+  return tc;
+}
+
+// simulation <until frame>
+void
+execute_simulation(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 2;
+  char *token[TOKEN_COUNT] = { [1] = input };
+  int tc = tokenize(len, input, TOKEN_COUNT, token);
+
+  simulationGoal = simulationMax;
+
+  if (tc == 1)
+    return;
+
+  uint64_t val = strtol(token[1], 0, 0);
+  simulationGoal = val;
+}
+
+// apply <fn> <p1> <p2> <p3> <...>
+void
+execute_apply(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 6;
+  char *token[TOKEN_COUNT];
+  int tc = tokenize(len, input, TOKEN_COUNT, token);
 
   if (tc < 2) {
     puts("Usage: apply <func> <param1> <param2> <param3>");
@@ -185,10 +211,10 @@ inputEvent(size_t len, char *input)
     sys_loopHalt();
     return;
   case 's':
-    simulationGoal = simulationMax;
+    execute_simulation(len, input);
     return;
   case 'a':
-    apply(len, input);
+    execute_apply(len, input);
     return;
   }
 
@@ -207,7 +233,7 @@ notifyEvent(int idx, const struct inotify_event *event)
 }
 
 void
-execute_simulation()
+game_simulation()
 {
   char *watchDirs[] = { "code" };
   double perf[MAX_SYMBOLS];
@@ -223,7 +249,7 @@ execute_simulation()
   sys_notifyInit(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
   sys_dlfnInit(dlpath);
   sys_dlfnOpen();
-  simulationGoal = simulationMax;
+  simulationGoal = 0;
   sys_recordSeekW(recording, 0u);
   sys_recordPlaybackAll(recording, inputEvent);
   sys_inputInit();
@@ -268,7 +294,7 @@ main(int argc, char **argv)
 {
   recording = sys_recordAlloc();
   while (!exiting) {
-    execute_simulation();
+    game_simulation();
   }
   sys_recordFree(recording);
 
