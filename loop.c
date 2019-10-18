@@ -11,7 +11,7 @@
 
 // Pure functions
 int
-tscSort(const void *lhs, const void *rhs)
+tsc_order(const void *lhs, const void *rhs)
 {
   uint64_t lhv = *(uint64_t *) lhs;
   uint64_t rhv = *(uint64_t *) rhs;
@@ -25,7 +25,7 @@ tscSort(const void *lhs, const void *rhs)
 }
 
 static uint64_t
-getTscPerMs()
+tsc_per_ms()
 {
   const int DELTA_COUNT = 15;
   uint64_t tscDelta[DELTA_COUNT + 1] = { rdtsc() };
@@ -43,7 +43,7 @@ getTscPerMs()
     tscDelta[i] = tscDelta[i + 1] - tscDelta[i];
   }
 
-  qsort(tscDelta, DELTA_COUNT, sizeof(tscDelta[0]), tscSort);
+  qsort(tscDelta, DELTA_COUNT, sizeof(tscDelta[0]), tsc_order);
 
   return tscDelta[DELTA_COUNT / 2];
 }
@@ -61,10 +61,10 @@ static uint32_t runCount;
 
 // Implementation
 void
-sys_loopInit(uint8_t framerate)
+loop_init(uint8_t framerate)
 {
   if (!tscPerMs) {
-    tscPerMs = getTscPerMs();
+    tscPerMs = tsc_per_ms();
     tscPerFrame = 1000 / framerate * tscPerMs;
     clockStart = clock();
     tscStart = rdtsc();
@@ -75,7 +75,7 @@ sys_loopInit(uint8_t framerate)
 }
 
 void
-sys_loopPrintStatus()
+loop_print_status()
 {
   printf("--%u loop %s--\n", runCount, running ? "Running" : "Terminating");
   clock_t clockElapsed = clock() - clockStart;
@@ -92,19 +92,19 @@ sys_loopPrintStatus()
 }
 
 bool
-sys_loopRun()
+loop_run()
 {
   return running;
 }
 
 uint32_t
-sys_loopFrame()
+loop_frame()
 {
   return frame;
 }
 
 void
-sys_loopPause()
+loop_pause()
 {
   ++pauseFrame;
   for (;;) {
@@ -117,7 +117,7 @@ sys_loopPause()
 }
 
 void
-sys_loopSync()
+loop_sync()
 {
   ++frame;
   for (;;) {
@@ -130,13 +130,13 @@ sys_loopSync()
 }
 
 void
-sys_loopHalt()
+loop_halt()
 {
   running = false;
 }
 
 void
-sys_loopShutdown()
+loop_shutdown()
 {
   ++runCount;
 }

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "sys_input.h"
+#include "input.h"
 
 static char buf[4096] __attribute__((aligned(4096)));
 static const int bufLen = sizeof(buf) - 1;
@@ -14,7 +14,7 @@ static int usedBuf;
 static struct pollfd fds[1];
 
 bool
-sys_inputInit()
+input_init()
 {
   buf[bufLen] = 0;
 
@@ -25,7 +25,7 @@ sys_inputInit()
 }
 
 bool
-sys_inputPoll(sys_inputEvent handler)
+input_poll(InputEvent_t handler)
 {
   int poll_num = poll(fds, nfds, 0);
 
@@ -64,7 +64,7 @@ sys_inputPoll(sys_inputEvent handler)
 }
 
 bool
-sys_inputShutdown()
+input_shutdown()
 {
   memset(fds, 0, sizeof(fds));
   usedBuf = 0;

@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "sys_notify.c"
+#include "notify.h"
 
 void
 change_event(int idx, const struct inotify_event *ev)
@@ -28,15 +28,15 @@ main(int argc, char **argv)
     return 1;
   }
 
-  sys_notifyInit(argc - 1, argv + 1);
-  printf("%d\n", sys_notifyLastError());
+  notify_init(IN_CLOSE_WRITE, argc - 1, argv + 1);
+  printf("%d\n", notify_last_error());
 
   while (true) {
-    if (!sys_notifyPoll(change_event))
-      printf("lastError %d\n", sys_notifyLastError());
+    if (!notify_poll(change_event))
+      printf("lastError %d\n", notify_last_error());
   }
 
-  sys_notifyShutdown();
+  notify_shutdown();
 
   return 0;
 }

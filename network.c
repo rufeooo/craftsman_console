@@ -22,14 +22,14 @@ static bool connecting;
 static bool disconnected;
 
 void
-sys_networkNoNagle()
+network_no_nagle()
 {
   int flag = 1;
   setsockopt(sfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
 void
-sys_networkNonBlocking()
+network_non_blocking()
 {
   int flags = 0;
   if (sfd <= STDERR_FILENO)
@@ -48,7 +48,7 @@ sys_networkNonBlocking()
 }
 
 bool
-sys_networkConfigure(const char *host, const char *service_or_port)
+network_configure(const char *host, const char *service_or_port)
 {
   struct addrinfo *result = NULL;
 
@@ -68,8 +68,8 @@ sys_networkConfigure(const char *host, const char *service_or_port)
     return false;
 
   sfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-  sys_networkNoNagle();
-  sys_networkNonBlocking();
+  network_no_nagle();
+  network_non_blocking();
 
   if (sfd == -1)
     return false;
@@ -83,19 +83,19 @@ sys_networkConfigure(const char *host, const char *service_or_port)
 }
 
 bool
-sys_networkErrInterrupt()
+network_interrupted()
 {
   return (errno == EINTR || errno == EINPROGRESS);
 }
 
 bool
-sys_networkConnect()
+network_connect()
 {
   if (sfd <= STDERR_FILENO)
     return false;
 
   int result = connect(sfd, (struct sockaddr *) storage, usedStorage);
-  if (result == -1 && !sys_networkErrInterrupt()) {
+  if (result == -1 && !network_interrupted()) {
     return false;
   }
 
@@ -105,19 +105,19 @@ sys_networkConnect()
 }
 
 ssize_t
-sys_networkRead(ssize_t n, char buffer[n])
+network_read(ssize_t n, char buffer[n])
 {
   return read(sfd, buffer, n);
 }
 
 ssize_t
-sys_networkWrite(ssize_t n, const char buffer[n])
+network_write(ssize_t n, const char buffer[n])
 {
   return write(sfd, buffer, n);
 }
 
 int32_t
-sys_networkPoll()
+network_poll()
 {
   struct pollfd fds = { .fd = sfd, .events = POLLIN | POLLOUT | POLLERR };
   int poll_num = poll(&fds, 1, 0);
@@ -140,9 +140,9 @@ sys_networkPoll()
 }
 
 bool
-sys_networkIsReady()
+network_ready()
 {
-  sys_networkPoll();
+  network_poll();
 
   return connected && !disconnected;
 }

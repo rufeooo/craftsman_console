@@ -7,7 +7,7 @@
 #include <link.h>
 
 #include "macro.h"
-#include "sys_dlfn.h"
+#include "dlfn.h"
 
 static const int MAX_PATH = 128;
 static char dlname[MAX_PATH];
@@ -18,14 +18,14 @@ Symbol_t dlfnSymbols[MAX_SYMBOLS];
 int dlfnUsedSymbols;
 
 static void
-resetSymbols()
+reset_symbols()
 {
   memset(dlfnSymbols, 0, sizeof(dlfnSymbols));
   dlfnUsedSymbols = 0;
 }
 
 static void
-addSymbol(Symbol_t sym)
+add_symbol(Symbol_t sym)
 {
   if (dlfnUsedSymbols >= MAX_SYMBOLS)
     return;
@@ -33,7 +33,7 @@ addSymbol(Symbol_t sym)
 }
 
 int
-symbolOrdering(const void *lhs, const void *rhs)
+symbol_order(const void *lhs, const void *rhs)
 {
   const Symbol_t *lhv = lhs;
   const Symbol_t *rhv = rhs;
@@ -49,13 +49,13 @@ symbolOrdering(const void *lhs, const void *rhs)
 }
 
 void
-sortSymbols()
+sort_symbols()
 {
-  qsort(dlfnSymbols, dlfnUsedSymbols, sizeof(dlfnSymbols[0]), symbolOrdering);
+  qsort(dlfnSymbols, dlfnUsedSymbols, sizeof(dlfnSymbols[0]), symbol_order);
 }
 
 void
-sys_dlfnPrintSymbols()
+dlfn_print_symbols()
 {
   for (int i = 0; i < dlfnUsedSymbols; ++i) {
     printf("%s: %p\n", dlfnSymbols[i].name,
@@ -64,7 +64,7 @@ sys_dlfnPrintSymbols()
 }
 
 void
-sys_dlfnCall(const char *name)
+dlfn_call(const char *name)
 {
   for (int i = 0; i < dlfnUsedSymbols; ++i) {
     if (strcmp(name, dlfnSymbols[i].name) == 0) {
@@ -75,7 +75,7 @@ sys_dlfnCall(const char *name)
 }
 
 Functor_t *
-sys_dlfnGetSymbol(const char *name)
+dlfn_get_symbol(const char *name)
 {
   for (int i = 0; i < dlfnUsedSymbols; ++i) {
     if (strcmp(name, dlfnSymbols[i].name) == 0) {
@@ -87,7 +87,7 @@ sys_dlfnGetSymbol(const char *name)
 }
 
 static void
-parseSymtab(void *addr, void *symtab, void *strtab)
+parse_symtab(void *addr, void *symtab, void *strtab)
 {
   ElfW(Sym *) iter = symtab;
   for (; (void *) iter < strtab; ++iter) {
@@ -99,13 +99,13 @@ parseSymtab(void *addr, void *symtab, void *strtab)
       continue;
     Symbol_t s = { .name = &strtab[iter->st_name],
                    .fnctor = functor_init((void *) (addr + iter->st_value)) };
-    addSymbol(s);
+    add_symbol(s);
     printf("Symbol %s addr %p\n", s.name, s.fnctor.call);
   }
 }
 
 static void
-parseDynamicHeader(void *addr, const ElfW(Phdr) * phdr)
+parse_dynamic_header(void *addr, const ElfW(Phdr) * phdr)
 {
   ElfW(Addr) base = (ElfW(Addr)) addr;
   ElfW(Dyn) *dyn = (void *) (base + phdr->p_vaddr);
@@ -125,11 +125,11 @@ parseDynamicHeader(void *addr, const ElfW(Phdr) * phdr)
   }
 
   if (symtab)
-    parseSymtab(addr, symtab, strtab);
+    parse_symtab(addr, symtab, strtab);
 }
 
 static void
-parseElfHeader(void *dlAddr)
+parse_elf_header(void *dlAddr)
 {
   ElfW(Ehdr) *elfHeader = dlAddr;
   ElfW(Phdr) *pHeader = (void *) (dlAddr + elfHeader->e_phoff);
@@ -143,11 +143,11 @@ parseElfHeader(void *dlAddr)
     pHeader = (void *) pHeader + elfHeader->e_phentsize;
   }
   if (dynHeader)
-    parseDynamicHeader(dlAddr, dynHeader);
+    parse_dynamic_header(dlAddr, dynHeader);
 }
 
 bool
-sys_dlfnOpen()
+dlfn_open()
 {
   dlhandle = dlopen(dlname, RTLD_NOW);
   Dl_info info;
@@ -168,24 +168,24 @@ sys_dlfnOpen()
   while (iter) {
     printf("l_name %s l_addr %p\n", iter->l_name, (void *) iter->l_addr);
     if (strstr(iter->l_name, dlname)) {
-      parseElfHeader((void *) iter->l_addr);
+      parse_elf_header((void *) iter->l_addr);
     }
     iter = iter->l_next;
   }
 
   // Functors follow call ordering of the address space
-  sortSymbols();
+  sort_symbols();
 
   return true;
 }
 
 bool
-sys_dlfnClose()
+dlfn_close()
 {
   if (!dlhandle)
     return false;
 
-  resetSymbols();
+  reset_symbols();
   int result = dlclose(dlhandle);
   if (result != 0)
     puts(dlerror());
@@ -195,7 +195,7 @@ sys_dlfnClose()
 }
 
 bool
-sys_dlfnInit(const char *filepath)
+dlfn_init(const char *filepath)
 {
   if (!strstr(filepath, ".so"))
     return false;
@@ -207,9 +207,9 @@ sys_dlfnInit(const char *filepath)
 }
 
 void
-sys_dlfnShutdown()
+dlfn_shutdown()
 {
-  sys_dlfnClose();
+  dlfn_close();
   dlname[0] = 0;
 }
 

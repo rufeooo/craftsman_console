@@ -1,23 +1,23 @@
-#include "sys_network.c"
+#include "network.c"
 
 int
 main(int argc, char **argv)
 {
-  bool configured = sys_networkConfigure("assets.rufe.org", "4000");
-  bool connected = sys_networkConnect();
+  bool configured = network_configure("assets.rufe.org", "4000");
+  bool connected = network_connect();
   static char readBuffer[4096];
   static ssize_t usedReadBuffer;
 
-  while (!sys_networkIsReady()) {
+  while (!network_ready()) {
     puts("Waiting for connection\n");
     usleep(300 * 1000);
   }
 
   while (configured && connected) {
-    int32_t events = sys_networkPoll();
+    int32_t events = network_poll();
 
     if (events & POLLIN) {
-      ssize_t bytes = sys_networkRead(sizeof(readBuffer) - usedReadBuffer,
+      ssize_t bytes = network_read(sizeof(readBuffer) - usedReadBuffer,
                                       readBuffer + usedReadBuffer);
       if (bytes == -1)
         break;

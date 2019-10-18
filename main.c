@@ -4,15 +4,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "dlfn.h"
 #include "float.h"
 #include "functor.h"
+#include "input.h"
 #include "macro.h"
-#include "sys_dlfn.h"
-#include "sys_input.h"
-#include "sys_loop.c"
-#include "sys_notify.h"
-#include "sys_record.h"
-#include "sys_stats.h"
+#include "notify.h"
+#include "record.h"
+#include "stats.h"
+#include "loop.c"
 
 static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
@@ -25,7 +25,7 @@ static size_t used_apply_func;
 void
 prompt()
 {
-  sys_dlfnPrintSymbols();
+  dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
   puts("(q)uit (s)imulation (b)enchmark (a)pply (r)eload>");
 }
@@ -76,7 +76,7 @@ apply_param(const char *param, Param_t *p)
     add_apply_func(fnctor);
   } else if (param[0] == '<') {
     printf("param %s left_shift\n", param);
-    Functor_t fnctor = {.call = left_shift, .param[0].p = &p->i };
+    Functor_t fnctor = { .call = left_shift, .param[0].p = &p->i };
     add_apply_func(fnctor);
   } else { // TODO
     printf("string param unhandled %s\n", param);
@@ -132,7 +132,7 @@ execute_apply(size_t len, char *input)
     return;
   }
 
-  Functor_t *f = sys_dlfnGetSymbol(token[1]);
+  Functor_t *f = dlfn_get_symbol(token[1]);
   if (!f) {
     printf("Failure to apply: function not found (%s).\n", token[1]);
     return;
@@ -150,9 +150,9 @@ print_runtime_perf(size_t length, Stats_t perfStats[length])
 {
   for (int i = 0; i < length; ++i) {
     printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-           dlfnSymbols[i].name, sys_statsMin(&perfStats[i]),
-           sys_statsMax(&perfStats[i]), sys_statsMean(&perfStats[i]),
-           100.0 * sys_statsRsDev(&perfStats[i]));
+           dlfnSymbols[i].name, stats_min(&perfStats[i]),
+           stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
+           100.0 * stats_rs_dev(&perfStats[i]));
   }
   puts("");
 }
@@ -161,14 +161,14 @@ void
 execute_benchmark()
 {
   Stats_t aggregate;
-  sys_statsInit(&aggregate);
+  stats_init(&aggregate);
 
   const int magnitudes = 10;
   int calls = 1;
   for (int h = 0; h < magnitudes; ++h) {
     Stats_t perfStats[MAX_SYMBOLS];
     for (int i = 0; i < MAX_SYMBOLS; ++i) {
-      sys_statsInit(&perfStats[i]);
+      stats_init(&perfStats[i]);
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
@@ -178,10 +178,10 @@ execute_benchmark()
         functor_invoke(dlfnSymbols[i].fnctor);
         uint64_t endCall = rdtsc();
         double duration = to_double(endCall - startCall);
-        sys_statsAddSample(&perfStats[i], duration);
+        stats_sample_add(&perfStats[i], duration);
         sum += duration;
       }
-      sys_statsAddSample(&aggregate, sum);
+      stats_sample_add(&aggregate, sum);
     }
 
     printf("--per 10e%d\n", h);
@@ -197,29 +197,29 @@ execute_benchmark()
 }
 
 void
-inputEvent(size_t len, char *input)
+input_callback(size_t len, char *input)
 {
   // These events are not recorded
   switch (input[0]) {
   case 'p':
-    sys_recordPlayback(recording, inputEvent);
+    record_playback(recording, input_callback);
     return;
   case 'r':
     simulationGoal = 0;
-    sys_loopHalt();
+    loop_halt();
     return;
   case 'b':
     execute_benchmark();
     return;
   }
 
-  sys_recordAppend(recording, len, input);
+  record_append(recording, len, input);
 
   switch (input[0]) {
   case 'q':
     simulationGoal = 0;
     exiting = true;
-    sys_loopHalt();
+    loop_halt();
     return;
   case 's':
     execute_simulation(len, input);
@@ -233,14 +233,14 @@ inputEvent(size_t len, char *input)
 }
 
 void
-notifyEvent(int idx, const struct inotify_event *event)
+notify_callback(int idx, const struct inotify_event *event)
 {
   printf("File change %s\n", event->name);
   if (!strstr(dlpath, event->name))
     return;
 
   simulationGoal = 0;
-  sys_loopHalt();
+  loop_halt();
 }
 
 void
@@ -250,27 +250,27 @@ game_simulation()
   double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
   for (int i = 0; i < MAX_SYMBOLS; ++i) {
-    sys_statsInit(&perfStats[i]);
+    stats_init(&perfStats[i]);
   }
   memset(apply_func, 0, sizeof(apply_func));
   used_apply_func = 0;
 
-  sys_loopInit(10);
-  sys_loopPrintStatus();
-  sys_notifyInit(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
-  sys_dlfnInit(dlpath);
-  sys_dlfnOpen();
+  loop_init(10);
+  loop_print_status();
+  notify_init(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
+  dlfn_init(dlpath);
+  dlfn_open();
   simulationGoal = 0;
-  sys_recordSeekW(recording, 0u);
-  sys_recordPlaybackAll(recording, inputEvent);
-  sys_inputInit();
+  record_seek_write(recording, 0u);
+  record_playback_all(recording, input_callback);
+  input_init();
   prompt();
-  while (sys_loopRun()) {
-    sys_inputPoll(inputEvent);
-    sys_notifyPoll(notifyEvent);
+  while (loop_run()) {
+    input_poll(input_callback);
+    notify_poll(notify_callback);
 
-    if (simulationGoal <= sys_loopFrame()) {
-      sys_loopPause();
+    if (simulationGoal <= loop_frame()) {
+      loop_pause();
       continue;
     }
 
@@ -286,28 +286,28 @@ game_simulation()
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
-      sys_statsAddSample(&perfStats[i], perf[i]);
+      stats_sample_add(&perfStats[i], perf[i]);
     }
 
-    sys_loopSync();
+    loop_sync();
   }
   puts("--simulation performance");
   print_runtime_perf(dlfnUsedSymbols, perfStats);
-  sys_loopPrintStatus();
-  sys_loopShutdown();
-  sys_notifyShutdown();
-  sys_dlfnShutdown();
-  sys_inputShutdown();
+  loop_print_status();
+  loop_shutdown();
+  notify_shutdown();
+  dlfn_shutdown();
+  input_shutdown();
 }
 
 int
 main(int argc, char **argv)
 {
-  recording = sys_recordAlloc();
+  recording = record_alloc();
   while (!exiting) {
     game_simulation();
   }
-  sys_recordFree(recording);
+  record_free(recording);
 
   return 0;
 }

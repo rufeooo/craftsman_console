@@ -15,12 +15,12 @@ static const int MAX_SYMBOLS = 32;
 extern Symbol_t dlfnSymbols[MAX_SYMBOLS];
 extern int dlfnUsedSymbols;
 
-Functor_t *sys_dlfnGetSymbol(const char *name);
-void sys_dlfnCall(const char *name);
-void sys_dlfnPrintSymbols();
+Functor_t *dlfn_get_symbol(const char *name);
+void dlfn_call(const char *name);
+void dlfn_print_symbols();
 
-bool sys_dlfnInit(const char *filepath);
-void sys_dlfnShutdown();
+bool dlfn_init(const char *filepath);
+void dlfn_shutdown();
 
-bool sys_dlfnOpen();
-bool sys_dlfnClose();
+bool dlfn_open();
+bool dlfn_close();

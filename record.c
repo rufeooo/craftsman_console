@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "macro.h"
-#include "sys_record.h"
+#include "record.h"
 
 typedef struct Record_s {
   char *restrict buf;
@@ -14,7 +14,7 @@ typedef struct Record_s {
 } Record_t;
 
 Record_t *
-sys_recordAlloc()
+record_alloc()
 {
   Record_t *rec = malloc(sizeof(Record_t));
   rec->usedBuf = 0;
@@ -26,7 +26,7 @@ sys_recordAlloc()
 }
 
 static bool
-sys_recordRealloc(Record_t *rec, int bytesNeeded)
+record_realloc(Record_t *rec, int bytesNeeded)
 {
   if (bytesNeeded <= 0)
     return true;
@@ -42,10 +42,10 @@ sys_recordRealloc(Record_t *rec, int bytesNeeded)
 }
 
 bool
-sys_recordAppend(Record_t *rec, size_t len, const char *input)
+record_append(Record_t *rec, size_t len, const char *input)
 {
   size_t needed = len + rec->writeOffset + 1;
-  if (!sys_recordRealloc(rec, needed - rec->allocBuf))
+  if (!record_realloc(rec, needed - rec->allocBuf))
     return false;
 
   memcpy(rec->buf + rec->writeOffset, input, len);
@@ -57,7 +57,7 @@ sys_recordAppend(Record_t *rec, size_t len, const char *input)
 }
 
 void
-sys_recordPlaybackAll(Record_t *rec, sys_recordEvent handler)
+record_playback_all(Record_t *rec, RecordEvent_t handler)
 {
   size_t length = { 0 };
   for (int i = 0; i < rec->usedBuf; i += (length + 1)) {
@@ -67,7 +67,7 @@ sys_recordPlaybackAll(Record_t *rec, sys_recordEvent handler)
 }
 
 bool
-sys_recordPlayback(Record_t *rec, sys_recordEvent handler)
+record_playback(Record_t *rec, RecordEvent_t handler)
 {
   if (rec->readOffset >= rec->usedBuf)
     return false;
@@ -80,7 +80,7 @@ sys_recordPlayback(Record_t *rec, sys_recordEvent handler)
 }
 
 void
-sys_recordSeekR(Record_t *rec, size_t nth)
+record_seek_read(Record_t *rec, size_t nth)
 {
   int i = 0;
   for (; nth > 0 && i < rec->usedBuf; ++i) {
@@ -93,7 +93,7 @@ sys_recordSeekR(Record_t *rec, size_t nth)
 }
 
 void
-sys_recordSeekW(Record_t *rec, size_t nth)
+record_seek_write(Record_t *rec, size_t nth)
 {
   int i = 0;
   for (; nth > 0 && i < rec->usedBuf; ++i) {
@@ -106,25 +106,25 @@ sys_recordSeekW(Record_t *rec, size_t nth)
 }
 
 size_t
-sys_recordLength(Record_t *rec)
+record_length(Record_t *rec)
 {
   return rec->usedBuf;
 }
 
 size_t
-sys_recordOffsetR(Record_t *rec)
+record_read_offset(Record_t *rec)
 {
   return rec->readOffset;
 }
 
 size_t
-sys_recordOffsetW(Record_t *rec)
+record_write_offset(Record_t *rec)
 {
   return rec->writeOffset;
 }
 
 Record_t *
-sys_recordClone(Record_t *rec)
+record_clone(Record_t *rec)
 {
   Record_t *clone = malloc(sizeof(Record_t));
   *clone = *rec;
@@ -134,20 +134,20 @@ sys_recordClone(Record_t *rec)
 }
 
 void
-sys_recordReset(Record_t *rec)
+record_reset(Record_t *rec)
 {
   rec->readOffset = rec->writeOffset = rec->usedBuf = 0;
 }
 
 void
-sys_recordFree(Record_t *rec)
+record_free(Record_t *rec)
 {
   FREE(rec->buf);
   FREE(rec);
 }
 
 void
-sys_recordDebug(Record_t *rec)
+record_debug(Record_t *rec)
 {
   printf("%p: %d alloc %d used %d wo %d ro\n", rec, rec->allocBuf,
          rec->usedBuf, rec->writeOffset, rec->readOffset);

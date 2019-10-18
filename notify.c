@@ -1,188 +1,129 @@
 #include <errno.h>
 #include <poll.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/inotify.h>
+#include <string.h>
 #include <unistd.h>
 
-/* Read all available inotify events from the file descriptor 'fd'.
-   wd is the table of watch descriptors for the directories in argv.
-   argc is the length of wd and argv.
-   argv is the list of watched directories.
-   Entry 0 of wd and argv is unused. */
+#include "notify.h"
 
-static void
-handle_events(int fd, int *wd, int argc, char *argv[])
-{
-  /* Some systems cannot read integer variables if they are not
-     properly aligned. On other systems, incorrect alignment may
-     decrease performance. Hence, the buffer used for reading from
-     the inotify file descriptor should have the same alignment as
-     struct inotify_event. */
+typedef struct {
+  int nfds;
+  struct pollfd *fds;
+  int *wd;
+} Watch_t;
 
-  char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
-  const struct inotify_event *event;
-  int i;
-  ssize_t len;
-  char *ptr;
-
-  /* Loop while events can be read from inotify file descriptor. */
-
-  for (;;) {
-    /* Read some events. */
-
-    len = read(fd, buf, sizeof buf);
-    if (len == -1 && errno != EAGAIN) {
-      perror("read");
-      exit(EXIT_FAILURE);
-    }
-
-    /* If the nonblocking read() found no events to read, then
-       it returns -1 with errno set to EAGAIN. In that case,
-       we exit the loop. */
-    if (len <= 0)
-      break;
-
-    /* Loop over all events in the buffer */
-
-    for (ptr = buf; ptr < buf + len;
-         ptr += sizeof(struct inotify_event) + event->len) {
-      event = (const struct inotify_event *) ptr;
-
-      /* Print event type */
-
-      if (event->mask & IN_OPEN)
-        printf("IN_OPEN: ");
-      if (event->mask & IN_DELETE_SELF)
-        printf("IN_DELETE_SELF: ");
-      if (event->mask & IN_DELETE)
-        printf("IN_DELETE: ");
-      if (event->mask & IN_CLOSE_NOWRITE)
-        printf("IN_CLOSE_NOWRITE: ");
-      if (event->mask & IN_CLOSE_WRITE)
-        printf("IN_CLOSE_WRITE: ");
-      if (event->mask & IN_IGNORED)
-        printf("IN_IGNORED: ");
-
-      /* Print the name of the watched directory */
-
-      for (i = 1; i < argc; ++i) {
-        if (wd[i] == event->wd) {
-          printf("%s/", argv[i]);
-          break;
-        }
-      }
-
-      /* Print the name of the file */
-      if (event->len)
-        printf("%s", event->name);
-
-      /* Print type of filesystem object */
-
-      if (event->mask & IN_ISDIR)
-        printf(" [directory]\n");
-      else
-        printf(" [file]\n");
-    }
-  }
-}
+static Watch_t watchState;
+static int lastError;
 
 int
-main(int argc, char *argv[])
+notify_last_error()
 {
-  char buf;
-  int fd, i, poll_num;
-  int *wd;
-  nfds_t nfds;
-  struct pollfd fds[2];
+  return lastError;
+}
 
-  if (argc < 2) {
-    printf("Usage: %s PATH [PATH ...]\n", argv[0]);
-    exit(EXIT_FAILURE);
+bool
+notify_init(uint32_t eventMask, uint32_t argc, char **argv)
+{
+  watchState.fds = calloc(argc, sizeof(struct pollfd));
+  if (!watchState.fds) {
+    lastError = 2;
+    return false;
   }
 
-  printf("Press ENTER key to terminate.\n");
-
-  /* Create the file descriptor for accessing the inotify API */
-
-  fd = inotify_init1(IN_NONBLOCK);
-  if (fd == -1) {
-    perror("inotify_init1");
-    exit(EXIT_FAILURE);
+  watchState.wd = calloc(argc, sizeof(int));
+  if (!watchState.wd) {
+    lastError = 3;
+    return false;
   }
 
-  /* Allocate memory for watch descriptors */
+  watchState.nfds = 0;
+  for (uint32_t i = 0; i < argc; ++i) {
+    ++watchState.nfds;
+    struct pollfd pfd = {
+      .fd = inotify_init1(IN_NONBLOCK),
+      .events = POLLIN,
+    };
+    watchState.fds[i] = pfd;
 
-  wd = calloc(argc, sizeof(int));
-  if (wd == NULL) {
-    perror("calloc");
-    exit(EXIT_FAILURE);
-  }
+    if (pfd.fd == -1) {
+      lastError = 4;
+      perror("inotify_init1");
+      return false;
+    }
 
-  /* Mark directories for events
-     - file was opened
-     - file was closed */
-
-  for (i = 1; i < argc; i++) {
-    wd[i] = inotify_add_watch(
-      fd, argv[i], IN_CLOSE_WRITE | IN_DELETE | IN_DELETE_SELF);
-    if (wd[i] == -1) {
-      fprintf(stderr, "Cannot watch '%s'\n", argv[i]);
+    watchState.wd[i] =
+      inotify_add_watch(pfd.fd, argv[i], eventMask);
+    if (watchState.wd[i] == -1) {
+      lastError = 5;
       perror("inotify_add_watch");
-      exit(EXIT_FAILURE);
+      return false;
     }
   }
 
-  /* Prepare for polling */
+  lastError = 0;
 
-  nfds = 2;
+  return true;
+}
 
-  /* Console input */
+bool
+notify_poll(NotifyEvent_t handler)
+{
+  static char buf[4096]
+    __attribute__((aligned(__alignof__(struct inotify_event))));
+  const char *event;
+  const char *eventEnd;
 
-  fds[0].fd = STDIN_FILENO;
-  fds[0].events = POLLIN;
+  int poll_num = poll(watchState.fds, watchState.nfds, 0);
+  // printf("poll %d\n", poll_num);
 
-  /* Inotify input */
+  if (poll_num == -1) {
+    if (errno == EINTR)
+      return true;
+    lastError = 6;
+    perror("poll");
+    return false;
+  }
 
-  fds[1].fd = fd;
-  fds[1].events = POLLIN;
-
-  /* Wait for events and/or terminal input */
-
-  printf("Listening for events.\n");
-  while (1) {
-    poll_num = poll(fds, nfds, -1);
-    if (poll_num == -1) {
-      if (errno == EINTR)
-        continue;
-      perror("poll");
-      exit(EXIT_FAILURE);
+  for (int i = 0; i < watchState.nfds; ++i) {
+    if (0 == (watchState.fds[i].revents & POLLIN)) {
+      continue;
     }
 
-    if (poll_num > 0) {
-      if (fds[0].revents & POLLIN) {
-        /* Console input is available. Empty stdin and quit */
+    watchState.fds[i].revents = 0;
 
-        while (read(STDIN_FILENO, &buf, 1) > 0 && buf != '\n')
-          continue;
-        break;
-      }
+    ssize_t len = read(watchState.fds[i].fd, buf, sizeof buf);
+    if (len == -1 && errno != EAGAIN) {
+      perror("read");
+      lastError = 7;
+      return false;
+    }
 
-      if (fds[1].revents & POLLIN) {
-        /* Inotify events are available */
-
-        handle_events(fd, wd, argc, argv);
-      }
+    event = buf;
+    eventEnd = buf + len;
+    while (event < eventEnd) {
+      const struct inotify_event *notify =
+        (const struct inotify_event *) event;
+      handler(i, notify);
+      event += sizeof(struct inotify_event) + notify->len;
     }
   }
 
-  printf("Listening for events stopped.\n");
+  lastError = 0;
 
-  /* Close inotify file descriptor */
+  return true;
+}
 
-  close(fd);
-
-  free(wd);
-  exit(EXIT_SUCCESS);
+void
+notify_shutdown()
+{
+  for (int i = 0; i < watchState.nfds; ++i) {
+    close(watchState.fds[i].fd);
+  }
+  free(watchState.fds);
+  free(watchState.wd);
+  memset(&watchState, 0, sizeof(watchState));
 }
 
