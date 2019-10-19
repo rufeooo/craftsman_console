@@ -255,6 +255,7 @@ notify_callback(int idx, const struct inotify_event *event)
 void
 game_simulation()
 {
+  int inputRead = 0;
   char *watchDirs[] = { "code" };
   double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
@@ -270,12 +271,11 @@ game_simulation()
   dlfn_init(dlpath);
   dlfn_open();
   simulationGoal = 0;
-  record_seek_read(recording, 0u);
   input_init();
   prompt();
   while (loop_run()) {
     input_poll(input_callback);
-    for (; record_playback(recording, game_input);) {
+    for (; record_playback(recording, game_input, &inputRead);) {
     }
 
     notify_poll(notify_callback);

@@ -10,15 +10,13 @@ typedef struct Record_s Record_t;
 Record_t *record_alloc();
 bool record_append(Record_t *rec, size_t len, const char *input);
 void record_playback_all(Record_t *rec, RecordEvent_t handler);
-bool record_playback(Record_t *rec, RecordEvent_t handler);
+bool record_playback(Record_t *rec, RecordEvent_t handler, int *readOffset);
 void record_seek_write(Record_t *rec, size_t nth);
-void record_seek_read(Record_t *rec, size_t nth);
 Record_t *record_clone(Record_t *rec);
 void record_reset(Record_t *rec);
 void record_free(Record_t *rec);
 
 size_t record_length(Record_t *rec);
-size_t record_read_offset(Record_t *rec);
 size_t record_write_offset(Record_t *rec);
 
 void record_debug(Record_t *rec);

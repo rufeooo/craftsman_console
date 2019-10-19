@@ -10,7 +10,6 @@ typedef struct Record_s {
   int allocBuf;
   int usedBuf;
   int writeOffset;
-  int readOffset;
 } Record_t;
 
 Record_t *
@@ -18,7 +17,6 @@ record_alloc()
 {
   Record_t *rec = malloc(sizeof(Record_t));
   rec->usedBuf = 0;
-  rec->readOffset = rec->writeOffset = 0;
   rec->allocBuf = 4 * 1024;
   rec->buf = malloc(rec->allocBuf);
 
@@ -67,29 +65,16 @@ record_playback_all(Record_t *rec, RecordEvent_t handler)
 }
 
 bool
-record_playback(Record_t *rec, RecordEvent_t handler)
+record_playback(Record_t *rec, RecordEvent_t handler, int *readOffset)
 {
-  if (rec->readOffset >= rec->usedBuf)
+  if (*readOffset >= rec->usedBuf)
     return false;
 
-  size_t length = strlen(&rec->buf[rec->readOffset]);
-  handler(length, &rec->buf[rec->readOffset]);
-  rec->readOffset += length + 1;
+  size_t length = strlen(&rec->buf[*readOffset]);
+  handler(length, &rec->buf[*readOffset]);
+  *readOffset += length + 1;
 
   return true;
-}
-
-void
-record_seek_read(Record_t *rec, size_t nth)
-{
-  int i = 0;
-  for (; nth > 0 && i < rec->usedBuf; ++i) {
-    if (rec->buf[i] == 0) {
-      --nth;
-    }
-  }
-
-  rec->readOffset = i;
 }
 
 void
@@ -112,12 +97,6 @@ record_length(Record_t *rec)
 }
 
 size_t
-record_read_offset(Record_t *rec)
-{
-  return rec->readOffset;
-}
-
-size_t
 record_write_offset(Record_t *rec)
 {
   return rec->writeOffset;
@@ -136,7 +115,7 @@ record_clone(Record_t *rec)
 void
 record_reset(Record_t *rec)
 {
-  rec->readOffset = rec->writeOffset = rec->usedBuf = 0;
+  rec->writeOffset = rec->usedBuf = 0;
 }
 
 void
@@ -149,7 +128,7 @@ record_free(Record_t *rec)
 void
 record_debug(Record_t *rec)
 {
-  printf("%p: %d alloc %d used %d wo %d ro\n", rec, rec->allocBuf,
-         rec->usedBuf, rec->writeOffset, rec->readOffset);
+  printf("%p: %d alloc %d used %d wo\n", rec, rec->allocBuf, rec->usedBuf,
+         rec->writeOffset);
 }
 

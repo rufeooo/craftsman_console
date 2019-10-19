@@ -34,15 +34,15 @@ main(int argc, char **argv)
   record_debug(copyRec);
 
   record_seek_write(recording, 0u);
-  record_seek_read(copyRec, 0u);
-  while (record_playback(copyRec, input_handler)) {
+  int readOffset = 0;
+  while (record_playback(copyRec, input_handler, &readOffset)) {
   }
 
   record_debug(recording);
   record_debug(copyRec);
 
-  record_seek_read(copyRec, 0u);
-  while (record_playback(copyRec, input_handler)) {
+  int copyRead = 0;
+  while (record_playback(copyRec, input_handler, &copyRead)) {
   }
 
   record_debug(recording);
