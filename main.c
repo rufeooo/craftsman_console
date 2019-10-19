@@ -8,11 +8,11 @@
 #include "float.h"
 #include "functor.h"
 #include "input.h"
+#include "loop.c"
 #include "macro.h"
 #include "notify.h"
 #include "record.h"
 #include "stats.h"
-#include "loop.c"
 
 static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
@@ -201,21 +201,22 @@ input_callback(size_t len, char *input)
 {
   // These events are not recorded
   switch (input[0]) {
-  case 'p':
-    record_playback(recording, input_callback);
-    return;
   case 'r':
     simulationGoal = 0;
     loop_halt();
     return;
-  case 'b':
-    execute_benchmark();
-    return;
   }
 
   record_append(recording, len, input);
+}
 
+void
+game_action(size_t len, char *input)
+{
   switch (input[0]) {
+  case 'b':
+    execute_benchmark();
+    return;
   case 'q':
     simulationGoal = 0;
     exiting = true;
@@ -228,8 +229,16 @@ input_callback(size_t len, char *input)
     execute_apply(len, input);
     return;
   }
+}
 
-  prompt();
+void
+game_input(size_t len, char *input)
+{
+  static char buffer[4096];
+
+  memcpy(buffer, input, len);
+
+  game_action(len, buffer);
 }
 
 void
@@ -261,12 +270,14 @@ game_simulation()
   dlfn_init(dlpath);
   dlfn_open();
   simulationGoal = 0;
-  record_seek_write(recording, 0u);
-  record_playback_all(recording, input_callback);
+  record_seek_read(recording, 0u);
   input_init();
   prompt();
   while (loop_run()) {
     input_poll(input_callback);
+    for (; record_playback(recording, game_input);) {
+    }
+
     notify_poll(notify_callback);
 
     if (simulationGoal <= loop_frame()) {
