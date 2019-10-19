@@ -14,10 +14,20 @@ input_handler(size_t strlen, char *str)
   printf("%s\n", str);
 }
 
+void
+test_handler(size_t strlen, char *str)
+{
+  printf("ok %zd\n", strlen);
+}
+
 int
 main(int argc, char **argv)
 {
   recording = record_alloc();
+
+  record_append(recording, 0, 0);
+  int readOffset = 0;
+  record_playback(recording, test_handler, &readOffset);
 
   record_append(recording, 1, "a");
   record_append(recording, 1, "b");
@@ -34,7 +44,7 @@ main(int argc, char **argv)
   record_debug(copyRec);
 
   record_seek_write(recording, 0u);
-  int readOffset = 0;
+  readOffset = 0;
   while (record_playback(copyRec, input_handler, &readOffset)) {
   }
 

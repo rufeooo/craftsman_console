@@ -205,6 +205,11 @@ input_callback(size_t len, char *input)
     simulationGoal = 0;
     loop_halt();
     return;
+  case 'q':
+    simulationGoal = 0;
+    exiting = true;
+    loop_halt();
+    return;
   }
 
   record_append(recording, len, input);
@@ -216,11 +221,6 @@ game_action(size_t len, char *input)
   switch (input[0]) {
   case 'b':
     execute_benchmark();
-    return;
-  case 'q':
-    simulationGoal = 0;
-    exiting = true;
-    loop_halt();
     return;
   case 's':
     execute_simulation(len, input);
@@ -237,6 +237,7 @@ game_input(size_t len, char *input)
   static char buffer[4096];
 
   memcpy(buffer, input, len);
+  buffer[len] = 0;
 
   game_action(len, buffer);
 }
@@ -275,9 +276,10 @@ game_simulation()
   prompt();
   while (loop_run()) {
     input_poll(input_callback);
-    for (; record_playback(recording, game_input, &inputRead);) {
+    if (!record_playback(recording, game_input, &inputRead)) {
+      record_append(recording, 0, 0);
+      ++inputRead;
     }
-
     notify_poll(notify_callback);
 
     if (simulationGoal <= loop_frame()) {
