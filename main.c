@@ -290,6 +290,50 @@ fixed_atoi(char str[static 3])
 }
 
 bool
+network_io()
+{
+  int32_t events = network_poll();
+  if ((events & POLLOUT) == 0) {
+    puts("network write unavailable\n");
+    return false;
+  }
+
+  if (events & POLLIN) {
+    static char net_buffer[4096];
+    static ssize_t used_read_buffer;
+    ssize_t bytes = network_read(sizeof(net_buffer) - used_read_buffer,
+                                 net_buffer + used_read_buffer);
+    if (bytes == -1) {
+      return false;
+    }
+    used_read_buffer += bytes;
+    while (used_read_buffer >= 4) {
+      int *header = (int *) net_buffer;
+      int length = 4 + *header;
+      if (used_read_buffer >= length) {
+        if (length > 9) {
+          printf("Received big message %d: %s\n", length, &net_buffer[4]);
+        }
+        int client_id = fixed_atoi(&net_buffer[4]);
+        if (client_id < MAX_PLAYER) {
+          if (!from_network[client_id]) {
+            from_network[client_id] = record_alloc();
+          }
+
+          ++reads;
+          readBytes += length;
+          record_append(from_network[client_id], *header - 5, &net_buffer[8]);
+        }
+      }
+      memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
+      used_read_buffer -= length;
+    }
+  }
+
+  return true;
+}
+
+bool
 network_input_ready(Record_t *player_input[static MAX_PLAYER],
                     int read_offset[static MAX_PLAYER])
 {
@@ -329,51 +373,15 @@ game_simulation()
   while (loop_run()) {
     input_poll(input_callback);
 
-    int32_t events = network_poll();
-    if ((events & POLLOUT) == 0) {
-      puts("network write unavailable\n");
-      loop_halt();
-      continue;
-    }
-
     while (!record_playback(recording, input_to_network, &inputRead)) {
       record_append(recording, 0, 0);
     }
     notify_poll(notify_callback);
 
-    if (events & POLLIN) {
-      static char net_buffer[4096];
-      static ssize_t used_read_buffer;
-      ssize_t bytes = network_read(sizeof(net_buffer) - used_read_buffer,
-                                   net_buffer + used_read_buffer);
-      if (bytes == -1) {
-        puts("network failed to read\n");
-        loop_halt();
-        continue;
-      }
-      used_read_buffer += bytes;
-      while (used_read_buffer >= 4) {
-        int *header = (int *) net_buffer;
-        int length = 4 + *header;
-        if (used_read_buffer >= length) {
-          if (length > 9) {
-            printf("Received big message %d: %s\n", length, &net_buffer[4]);
-          }
-          int client_id = fixed_atoi(&net_buffer[4]);
-          if (client_id < MAX_PLAYER) {
-            if (!from_network[client_id]) {
-              from_network[client_id] = record_alloc();
-            }
-
-            ++reads;
-            readBytes += length;
-            record_append(from_network[client_id], *header - 5,
-                          &net_buffer[8]);
-          }
-        }
-        memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
-        used_read_buffer -= length;
-      }
+    if (!network_io()) {
+      puts("Network failure.");
+      loop_halt();
+      continue;
     }
 
     printf("%d writes %d reads %d readBytes\n", writes, reads, readBytes);
