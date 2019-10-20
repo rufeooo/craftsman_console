@@ -56,6 +56,7 @@ static uint64_t tscPerFrame;
 static uint64_t tsc;
 static uint32_t frame;
 static uint32_t pauseFrame;
+static uint32_t stallFrame;
 static bool running;
 static uint32_t runCount;
 
@@ -80,8 +81,8 @@ loop_print_status()
   printf("--%u loop %s--\n", runCount, running ? "Running" : "Terminating");
   clock_t clockElapsed = clock() - clockStart;
   uint64_t elapsedMs = clockElapsed / (CLOCKS_PER_SEC / 1000);
-  printf("#%u frame #%u pauseFrame %" PRIu64 " ms by clock\n", frame,
-         pauseFrame, elapsedMs);
+  printf("#%u frame #%u pauseFrame #%u stallFrame %" PRIu64 " ms by clock\n",
+         frame, pauseFrame, stallFrame, elapsedMs);
 
   uint64_t tscEndEstimate = tscStart + (tscPerMs * elapsedMs);
   uint64_t tscDrift = MIN(tscEndEstimate - tsc, tsc - tscEndEstimate);
@@ -101,6 +102,19 @@ uint32_t
 loop_frame()
 {
   return frame;
+}
+
+void
+loop_stall()
+{
+  ++stallFrame;
+  for (;;) {
+    uint64_t now = rdtsc();
+    if (now - tsc >= tscPerFrame) {
+      tsc = MIN(tsc + tscPerFrame, now);
+      break;
+    }
+  }
 }
 
 void

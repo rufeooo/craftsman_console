@@ -18,6 +18,7 @@ record_alloc()
   Record_t *rec = malloc(sizeof(Record_t));
   rec->usedBuf = 0;
   rec->allocBuf = 4 * 1024;
+  rec->writeOffset = 0;
   rec->buf = malloc(rec->allocBuf);
 
   return rec;
@@ -77,6 +78,15 @@ record_playback(Record_t *rec, RecordEvent_t handler, int *readOffset)
   return true;
 }
 
+bool
+record_can_playback(Record_t *rec, int readOffset)
+{
+  if (readOffset >= rec->usedBuf)
+    return false;
+
+  return true;
+}
+
 void
 record_seek_write(Record_t *rec, size_t nth)
 {
@@ -121,7 +131,9 @@ record_reset(Record_t *rec)
 void
 record_free(Record_t *rec)
 {
-  FREE(rec->buf);
+  if (rec) {
+    FREE(rec->buf);
+  }
   FREE(rec);
 }
 

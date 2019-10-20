@@ -15,6 +15,8 @@
 #include "record.h"
 #include "stats.h"
 
+#define MAX_PLAYER 4
+
 static int writes;
 static int reads;
 static int readBytes;
@@ -23,7 +25,7 @@ static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
 static bool exiting;
 static Record_t *recording;
-static Record_t *from_network;
+static Record_t *from_network[MAX_PLAYER];
 static Functor_t apply_func[128];
 static size_t used_apply_func;
 
@@ -274,11 +276,39 @@ notify_callback(int idx, const struct inotify_event *event)
   loop_halt();
 }
 
+int
+digit_atoi(char c)
+{
+  return c - '0';
+}
+
+int
+fixed_atoi(char str[static 3])
+{
+  return digit_atoi(str[0]) * 100 + digit_atoi(str[1]) * 10
+         + digit_atoi(str[2]);
+}
+
+bool
+network_input_ready(Record_t *player_input[static MAX_PLAYER],
+                    int read_offset[static MAX_PLAYER])
+{
+  for (int i = 0; i < MAX_PLAYER; ++i) {
+    if (!player_input[i])
+      continue;
+    if (record_can_playback(player_input[i], read_offset[i]))
+      continue;
+    return false;
+  }
+
+  return true;
+}
+
 void
 game_simulation()
 {
   int inputRead = 0;
-  int networkRead = 0;
+  int networkRead[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
   double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
@@ -326,23 +356,39 @@ game_simulation()
         int *header = (int *) net_buffer;
         int length = 4 + *header;
         if (used_read_buffer >= length) {
-          if (length > 5)
-            printf("Received big message %d\n", length);
-          ++reads;
-          readBytes += length;
-          record_append(from_network, *header - 1, &net_buffer[4]);
+          if (length > 9) {
+            printf("Received big message %d: %s\n", length, &net_buffer[4]);
+          }
+          int client_id = fixed_atoi(&net_buffer[4]);
+          if (client_id < MAX_PLAYER) {
+            if (!from_network[client_id]) {
+              from_network[client_id] = record_alloc();
+            }
+
+            ++reads;
+            readBytes += length;
+            record_append(from_network[client_id], *header - 5,
+                          &net_buffer[8]);
+          }
         }
         memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
         used_read_buffer -= length;
       }
     }
 
-    if (!record_playback(from_network, game_input, &networkRead)) {
+    printf("%d writes %d reads %d readBytes\n", writes, reads, readBytes);
+
+    if (!network_input_ready(from_network, networkRead)) {
       printf(".");
-      // TODO loop_stall();
+      loop_stall();
+      continue;
     }
-    printf("%d writes %d reads %d readBytes %d from_network record\n", writes,
-           reads, readBytes, networkRead);
+
+    for (int i = 0; i < MAX_PLAYER; ++i) {
+      if (!from_network[i])
+        continue;
+      record_playback(from_network[i], game_input, &networkRead[i]);
+    }
 
     if (simulationGoal <= loop_frame()) {
       loop_pause();
@@ -387,11 +433,12 @@ main(int argc, char **argv)
   }
 
   recording = record_alloc();
-  from_network = record_alloc();
   while (!exiting) {
     game_simulation();
   }
-  record_free(from_network);
+  for (int i = 0; i < MAX_PLAYER; ++i) {
+    record_free(from_network[i]);
+  }
   record_free(recording);
 
   return 0;

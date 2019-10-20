@@ -11,6 +11,7 @@ Record_t *record_alloc();
 bool record_append(Record_t *rec, size_t len, const char *input);
 void record_playback_all(Record_t *rec, RecordEvent_t handler);
 bool record_playback(Record_t *rec, RecordEvent_t handler, int *readOffset);
+bool record_can_playback(Record_t *rec, int readOffset);
 void record_seek_write(Record_t *rec, size_t nth);
 Record_t *record_clone(Record_t *rec);
 void record_reset(Record_t *rec);
