@@ -44,7 +44,7 @@ record_append(Record_t *rec, size_t len, const char *input)
 {
   size_t needed = len + rec->writeOffset + 1;
   if (!record_realloc(rec, needed - rec->allocBuf))
-    return false;
+    CRASH();
 
   memcpy(rec->buf + rec->writeOffset, input, len);
   rec->writeOffset += len;
