@@ -21,14 +21,14 @@ static bool connected;
 static bool connecting;
 static bool disconnected;
 
-void
+static void
 network_no_nagle()
 {
   int flag = 1;
   setsockopt(sfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
-void
+static void
 network_non_blocking()
 {
   int flags = 0;

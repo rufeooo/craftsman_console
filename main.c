@@ -10,15 +10,20 @@
 #include "input.h"
 #include "loop.c"
 #include "macro.h"
+#include "network.c"
 #include "notify.h"
 #include "record.h"
 #include "stats.h"
 
+static int writes;
+static int reads;
+static int readBytes;
 static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
 static bool exiting;
 static Record_t *recording;
+static Record_t *from_network;
 static Functor_t apply_func[128];
 static size_t used_apply_func;
 
@@ -232,6 +237,22 @@ game_action(size_t len, char *input)
 }
 
 void
+input_to_network(size_t len, char *input)
+{
+  if (input[len] != 0)
+    CRASH();
+
+  ++writes;
+  if (!len) {
+    network_write(1, "");
+    return;
+  }
+
+  printf("network write %zu\n", len);
+  network_write(len + 1, input);
+}
+
+void
 game_input(size_t len, char *input)
 {
   static char buffer[4096];
@@ -257,6 +278,7 @@ void
 game_simulation()
 {
   int inputRead = 0;
+  int networkRead = 0;
   char *watchDirs[] = { "code" };
   double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
@@ -276,11 +298,51 @@ game_simulation()
   prompt();
   while (loop_run()) {
     input_poll(input_callback);
-    if (!record_playback(recording, game_input, &inputRead)) {
+
+    int32_t events = network_poll();
+    if ((events & POLLOUT) == 0) {
+      puts("network write unavailable\n");
+      loop_halt();
+      continue;
+    }
+
+    while (!record_playback(recording, input_to_network, &inputRead)) {
       record_append(recording, 0, 0);
-      ++inputRead;
     }
     notify_poll(notify_callback);
+
+    if (events & POLLIN) {
+      static char net_buffer[4096];
+      static ssize_t used_read_buffer;
+      ssize_t bytes = network_read(sizeof(net_buffer) - used_read_buffer,
+                                   net_buffer + used_read_buffer);
+      if (bytes == -1) {
+        puts("network failed to read\n");
+        loop_halt();
+        continue;
+      }
+      used_read_buffer += bytes;
+      while (used_read_buffer >= 4) {
+        int *header = (int *) net_buffer;
+        int length = 4 + *header;
+        if (used_read_buffer >= length) {
+          if (length > 5)
+            printf("Received big message %d\n", length);
+          ++reads;
+          readBytes += length;
+          record_append(from_network, *header - 1, &net_buffer[4]);
+        }
+        memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
+        used_read_buffer -= length;
+      }
+    }
+
+    if (!record_playback(from_network, game_input, &networkRead)) {
+      printf(".");
+      // TODO loop_stall();
+    }
+    printf("%d writes %d reads %d readBytes %d from_network record\n", writes,
+           reads, readBytes, networkRead);
 
     if (simulationGoal <= loop_frame()) {
       loop_pause();
@@ -316,10 +378,20 @@ game_simulation()
 int
 main(int argc, char **argv)
 {
+  bool configured = network_configure("gamehost.rufe.org", "4000");
+  bool connected = network_connect();
+
+  while (!network_ready()) {
+    puts("Waiting for connection\n");
+    usleep(300 * 1000);
+  }
+
   recording = record_alloc();
+  from_network = record_alloc();
   while (!exiting) {
     game_simulation();
   }
+  record_free(from_network);
   record_free(recording);
 
   return 0;
