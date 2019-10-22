@@ -34,7 +34,7 @@ prompt()
 {
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
-  puts("(q)uit (s)imulation (b)enchmark (a)pply (r)eload>");
+  puts("(q)uit (s)imulation (b)enchmark (a)pply (o)bject (r)eload>");
 }
 
 size_t
@@ -153,6 +153,26 @@ execute_apply(size_t len, char *input)
 }
 
 void
+execute_object(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 2;
+  char *token[TOKEN_COUNT];
+  int tc = tokenize(len, input, TOKEN_COUNT, token);
+
+  if (tc < 2) {
+    puts("Usage: object <name>");
+    return;
+  }
+  void *addr = dlfn_get_object(token[1]);
+  if (!addr) {
+    printf("%s not found.\n", token[1]);
+    return;
+  }
+  long *vp = addr;
+  printf("%s: %p value %lu\n", token[1], addr, *vp);
+}
+
+void
 print_runtime_perf(size_t length, Stats_t perfStats[length])
 {
   for (int i = 0; i < length; ++i) {
@@ -234,6 +254,9 @@ game_action(size_t len, char *input)
     return;
   case 'a':
     execute_apply(len, input);
+    return;
+  case 'o':
+    execute_object(len, input);
     return;
   }
 }
@@ -384,7 +407,7 @@ game_simulation()
       continue;
     }
 
-    printf("%d writes %d reads %d readBytes\n", writes, reads, readBytes);
+    // printf("%d writes %d reads %d readBytes\n", writes, reads, readBytes);
 
     if (!network_input_ready(from_network, networkRead)) {
       printf(".");

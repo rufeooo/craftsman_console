@@ -6,8 +6,8 @@
 #include <dlfcn.h>
 #include <link.h>
 
-#include "macro.h"
 #include "dlfn.h"
+#include "macro.h"
 
 static const int MAX_PATH = 128;
 static char dlname[MAX_PATH];
@@ -16,6 +16,8 @@ static void *dlhandle;
 // visible
 Symbol_t dlfnSymbols[MAX_SYMBOLS];
 int dlfnUsedSymbols;
+Object_t dlfnObjects[MAX_SYMBOLS];
+int dlfnUsedObjects;
 
 static void
 reset_symbols()
@@ -30,6 +32,14 @@ add_symbol(Symbol_t sym)
   if (dlfnUsedSymbols >= MAX_SYMBOLS)
     return;
   dlfnSymbols[dlfnUsedSymbols++] = sym;
+}
+
+static void
+add_object(Object_t obj)
+{
+  if (dlfnUsedObjects >= MAX_SYMBOLS)
+    return;
+  dlfnObjects[dlfnUsedObjects++] = obj;
 }
 
 int
@@ -86,6 +96,18 @@ dlfn_get_symbol(const char *name)
   return 0;
 }
 
+void *
+dlfn_get_object(const char *name)
+{
+  for (int i = 0; i < dlfnUsedObjects; ++i) {
+    if (strcmp(name, dlfnObjects[i].name) == 0) {
+      return dlfnObjects[i].address;
+    }
+  }
+
+  return 0;
+}
+
 static void
 parse_symtab(void *addr, void *symtab, void *strtab)
 {
@@ -101,6 +123,21 @@ parse_symtab(void *addr, void *symtab, void *strtab)
                    .fnctor = functor_init((void *) (addr + iter->st_value)) };
     add_symbol(s);
     printf("Symbol %s addr %p\n", s.name, s.fnctor.call);
+  }
+
+  iter = symtab;
+  for (; (void *) iter < strtab; ++iter) {
+    if (ELF64_ST_TYPE(iter->st_info) != STT_OBJECT)
+      continue;
+    if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL)
+      continue;
+    if (strcmp(&strtab[iter->st_name], "tick"))
+      continue;
+    Object_t o = { .name = &strtab[iter->st_name],
+                   .address = addr + iter->st_value };
+
+    add_object(o);
+    printf("global object %s addr %p\n", o.name, o.address);
   }
 }
 
