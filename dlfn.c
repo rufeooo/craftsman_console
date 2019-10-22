@@ -134,7 +134,8 @@ parse_symtab(void *addr, void *symtab, void *strtab)
     if (strcmp(&strtab[iter->st_name], "tick"))
       continue;
     Object_t o = { .name = &strtab[iter->st_name],
-                   .address = addr + iter->st_value };
+                   .address = addr + iter->st_value,
+                   .bytes = iter->st_size };
 
     add_object(o);
     printf("global object %s addr %p\n", o.name, o.address);

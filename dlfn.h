@@ -14,6 +14,7 @@ typedef struct {
 typedef struct {
   const char *name;
   void *address;
+  size_t bytes;
 } Object_t;
 
 static const int MAX_SYMBOLS = 32;
