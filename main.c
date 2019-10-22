@@ -293,7 +293,7 @@ input_to_network(size_t len, char *input)
 }
 
 void
-game_input(size_t len, char *input)
+network_to_game(size_t len, char *input)
 {
   static char buffer[4096];
 
@@ -403,6 +403,7 @@ game_simulation()
   }
   memset(apply_func, 0, sizeof(apply_func));
   used_apply_func = 0;
+  record_reset(recording);
 
   loop_init(10);
   loop_print_status();
@@ -419,6 +420,11 @@ game_simulation()
     input_poll(input_callback);
 
     while (!record_playback(recording, input_to_network, &inputRead)) {
+      if (frame + pauseFrame + 8 < writes) {
+        puts("write suspension");
+        break;
+      }
+
       record_append(recording, 0, 0);
     }
 
@@ -435,11 +441,11 @@ game_simulation()
       continue;
     }
 
-    printf("Writes %d\n", writes);
+    printf("Writes %d skew %d\n", writes, writes - (frame + pauseFrame));
     for (int i = 0; i < MAX_PLAYER; ++i) {
       if (!from_network[i])
         continue;
-      record_playback(from_network[i], game_input, &networkRead[i]);
+      record_playback(from_network[i], network_to_game, &networkRead[i]);
 
       printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
     }
