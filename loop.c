@@ -72,6 +72,8 @@ loop_init(uint8_t framerate)
   }
   tsc = rdtsc();
   frame = 0;
+  pauseFrame = 0;
+  stallFrame = 0;
   running = true;
 }
 

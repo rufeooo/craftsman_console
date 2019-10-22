@@ -345,9 +345,9 @@ network_io()
       return false;
     }
     used_read_buffer += bytes;
-    while (used_read_buffer >= 4) {
-      int *header = (int *) net_buffer;
-      int length = 4 + *header;
+    while (used_read_buffer >= 8) {
+      int *block_len = (int *) net_buffer;
+      int length = 8 + *block_len;
       if (used_read_buffer >= length) {
         if (length > 9) {
           printf("Received big message %d: %s %s\n", length, &net_buffer[4],
@@ -359,11 +359,12 @@ network_io()
 
         if (!from_network[client_id]) {
           from_network[client_id] = record_alloc();
+          loop_halt();
         }
 
         ++reads[client_id];
         readBytes[client_id] += length;
-        record_append(from_network[client_id], *header - 4 - 1,
+        record_append(from_network[client_id], *block_len - 1,
                       &net_buffer[8]);
       }
       memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
@@ -412,12 +413,14 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
+    printf("%d frame %d pause %d stall\n", frame, pauseFrame, stallFrame);
+
+    notify_poll(notify_callback);
     input_poll(input_callback);
 
     while (!record_playback(recording, input_to_network, &inputRead)) {
       record_append(recording, 0, 0);
     }
-    notify_poll(notify_callback);
 
     if (!network_io()) {
       puts("Network failure.");
@@ -427,6 +430,7 @@ game_simulation()
 
     if (!network_input_ready(from_network, networkRead)) {
       printf(".");
+      fflush(stdout);
       loop_stall();
       continue;
     }
