@@ -31,10 +31,23 @@ static Functor_t apply_func[128];
 static size_t used_apply_func;
 
 void
+print_players()
+{
+  int count = 0;
+  for (int i = 0; i < MAX_PLAYER; ++i) {
+    if (!from_network[i])
+      continue;
+    ++count;
+  }
+  printf("Player Count: %d.\n", count);
+}
+
+void
 prompt()
 {
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
+  print_players();
   puts("(q)uit (s)imulation (b)enchmark (a)pply (h)ash (o)bject (r)eload>");
 }
 
@@ -414,14 +427,14 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
-    printf("%d frame %d pause %d stall\n", frame, pauseFrame, stallFrame);
+    // printf("%d frame %d pause %d stall\n", frame, pauseFrame, stallFrame);
 
     notify_poll(notify_callback);
     input_poll(input_callback);
 
     while (!record_playback(recording, input_to_network, &inputRead)) {
       if (frame + pauseFrame + 8 < writes) {
-        puts("write suspension");
+        // puts("write suspension");
         break;
       }
 
@@ -441,13 +454,13 @@ game_simulation()
       continue;
     }
 
-    printf("Writes %d skew %d\n", writes, writes - (frame + pauseFrame));
+    // printf("Writes %d skew %d\n", writes, writes - (frame + pauseFrame));
     for (int i = 0; i < MAX_PLAYER; ++i) {
       if (!from_network[i])
         continue;
       record_playback(from_network[i], network_to_game, &networkRead[i]);
 
-      printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
+      // printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
     }
 
     if (simulationGoal <= loop_frame()) {
