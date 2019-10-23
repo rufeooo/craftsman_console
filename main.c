@@ -559,7 +559,12 @@ main(int argc, char **argv)
   bool connected = network_connect();
 
   while (!network_ready()) {
-    puts("Waiting for connection\n");
+    if (disconnected) {
+      puts("Network unable to connect.");
+      return 1;
+    }
+
+    puts("Waiting for connection %d %d\n");
     usleep(300 * 1000);
   }
 
