@@ -10,10 +10,11 @@ typedef union {
 } Param_t;
 
 typedef size_t (*FuncPointer)();
+static const int PARAM_COUNT = 3;
 
 typedef struct {
   FuncPointer call;
-  Param_t param[3];
+  Param_t param[PARAM_COUNT];
 } Functor_t;
 
 // Methods
