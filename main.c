@@ -153,16 +153,25 @@ execute_apply(size_t len, char *input)
     return;
   }
 
-  Functor_t *f = dlfn_get_symbol(token[1]);
-  if (!f) {
+  int matched = 0;
+  for (int fi = 0; fi < dlfnUsedSymbols; ++fi) {
+    const char *filter = token[1][0] == '*' ? dlfnSymbols[fi].name : token[1];
+
+    if (strcmp(filter, dlfnSymbols[fi].name))
+      continue;
+
+    ++matched;
+    for (int pi = 0; pi < PARAM_COUNT; ++pi) {
+      int ti = 2 + pi;
+      if (ti >= tc)
+        break;
+      apply_param(token[ti], &dlfnSymbols[fi].fnctor.param[pi]);
+    }
+  }
+
+  if (!matched) {
     printf("Failure to apply: function not found (%s).\n", token[1]);
     return;
-  }
-  for (int pi = 0; pi < 3; ++pi) {
-    int ti = 2 + pi;
-    if (ti >= tc)
-      break;
-    apply_param(token[ti], &f->param[pi]);
   }
 }
 
