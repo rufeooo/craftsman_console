@@ -17,6 +17,7 @@
 #include "stats.h"
 
 #define MAX_PLAYER 4
+#define MAX_FUNC 128
 
 static int writes;
 static int reads[MAX_PLAYER];
@@ -27,8 +28,18 @@ static uint32_t simulationGoal;
 static bool exiting;
 static Record_t *recording;
 static Record_t *from_network[MAX_PLAYER];
-static Functor_t apply_func[128];
+static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
+static Functor_t result_func[MAX_FUNC];
+static size_t used_result_func;
+
+size_t
+print_result(const Symbol_t *sym, size_t r)
+{
+  printf("0x%zX %s 0x%zX 0x%zX 0x%zX\n", r, sym->name, sym->fnctor.param[0].i,
+         sym->fnctor.param[1].i, sym->fnctor.param[2].i);
+  return 0;
+}
 
 void
 print_players()
@@ -48,7 +59,8 @@ prompt()
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
   print_players();
-  puts("(q)uit (s)imulation (b)enchmark (a)pply (h)ash (o)bject (r)eload>");
+  puts("(q)uit (s)imulation (b)enchmark (a)pply (p)rint (h)ash (o)bject "
+       "(r)eload>");
 }
 
 size_t
@@ -75,8 +87,22 @@ decrement(size_t *val)
 bool
 add_apply_func(Functor_t fnctor)
 {
+  if (used_apply_func >= MAX_FUNC)
+    return false;
+
   apply_func[used_apply_func] = fnctor;
   ++used_apply_func;
+  return true;
+}
+
+bool
+add_result_func(Functor_t fnctor)
+{
+  if (used_result_func >= MAX_FUNC)
+    return false;
+
+  result_func[used_result_func] = fnctor;
+  ++used_result_func;
   return true;
 }
 
@@ -173,6 +199,15 @@ execute_apply(size_t len, char *input)
     printf("Failure to apply: function not found (%s).\n", token[1]);
     return;
   }
+}
+
+void
+execute_print(size_t len, char *input)
+{
+  Functor_t fnctor = { .call = print_result };
+  add_result_func(fnctor);
+
+  puts("function results will be printed.");
 }
 
 void
@@ -288,6 +323,9 @@ game_action(size_t len, char *input)
     return;
   case 'a':
     execute_apply(len, input);
+    return;
+  case 'p':
+    execute_print(len, input);
     return;
   case 'o':
     execute_object(len, input);
@@ -418,6 +456,7 @@ game_simulation()
   int inputRead = 0;
   int networkRead[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
+  size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
   for (int i = 0; i < MAX_SYMBOLS; ++i) {
@@ -425,6 +464,8 @@ game_simulation()
   }
   memset(apply_func, 0, sizeof(apply_func));
   used_apply_func = 0;
+  memset(result_func, 0, sizeof(result_func));
+  used_result_func = 0;
   record_reset(recording);
 
   loop_init(10);
@@ -483,13 +524,21 @@ game_simulation()
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
       uint64_t startCall = rdtsc();
-      functor_invoke(dlfnSymbols[i].fnctor);
+      result[i] = functor_invoke(dlfnSymbols[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
       stats_sample_add(&perfStats[i], perf[i]);
+    }
+
+    for (int j = 0; j < dlfnUsedSymbols; ++j) {
+      for (int i = 0; i < used_result_func; ++i) {
+        result_func[i].param[0].cp = &dlfnSymbols[j];
+        result_func[i].param[1].i = result[j];
+        functor_invoke(result_func[i]);
+      }
     }
 
     loop_sync();

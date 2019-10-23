@@ -7,6 +7,7 @@
 typedef union {
   size_t i;
   void *p;
+  const void *cp;
 } Param_t;
 
 typedef size_t (*FuncPointer)();
