@@ -153,12 +153,9 @@ loop_sync()
 }
 
 void
-loop_adjustment(size_t pending_commands)
+loop_adjustment(bool fast_forward)
 {
-  if (pending_commands > 8)
-    tscPerFrame = &tscPerFastFrame;
-  else
-    tscPerFrame = &tscPerStableFrame;
+  tscPerFrame = fast_forward ? &tscPerFastFrame : &tscPerStableFrame;
 }
 
 void

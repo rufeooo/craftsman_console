@@ -469,6 +469,7 @@ network_input_ready(Record_t *player_input[static MAX_PLAYER],
 void
 game_simulation()
 {
+  const uint32_t FF_THRESHOLD = 10;
   RecordOffset_t inputRead = { 0 };
   RecordOffset_t netrec_read[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
@@ -500,7 +501,7 @@ game_simulation()
     input_poll(input_callback);
 
     while (!record_playback(irec, input_to_network, &inputRead)) {
-      if (frame + pauseFrame + 8 < writes) {
+      if (frame + pauseFrame + FF_THRESHOLD < writes) {
         // puts("write suspension");
         break;
       }
@@ -532,7 +533,7 @@ game_simulation()
 
     size_t pending = network_buffered(netrec_write, netrec_read);
     printf("%zu pending command\n", pending);
-    loop_adjustment(pending);
+    loop_adjustment(pending > FF_THRESHOLD);
 
     if (simulationGoal <= loop_frame()) {
       loop_pause();
