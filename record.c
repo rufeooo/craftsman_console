@@ -7,19 +7,17 @@
 
 typedef struct Record_s {
   char *restrict buf;
-  uint32_t allocBuf;
-  uint32_t usedBuf;
-  uint32_t writeOffset;
+  uint32_t alloc_bytes;
+  uint32_t used_bytes;
 } Record_t;
 
 Record_t *
 record_alloc()
 {
   Record_t *rec = malloc(sizeof(Record_t));
-  rec->usedBuf = 0;
-  rec->allocBuf = 4 * 1024;
-  rec->writeOffset = 0;
-  rec->buf = malloc(rec->allocBuf);
+  rec->used_bytes = 0;
+  rec->alloc_bytes = 4 * 1024;
+  rec->buf = malloc(rec->alloc_bytes);
 
   return rec;
 }
@@ -30,102 +28,92 @@ record_realloc(Record_t *rec, int bytesNeeded)
   if (bytesNeeded <= 0)
     return true;
 
-  char *const newBuf = realloc(rec->buf, rec->allocBuf * 2);
+  char *const newBuf = realloc(rec->buf, rec->alloc_bytes * 2);
   if (!newBuf)
     return false;
 
   rec->buf = newBuf;
-  rec->allocBuf *= 2;
+  rec->alloc_bytes *= 2;
 
   return true;
 }
 
 bool
-record_append(Record_t *rec, size_t len, const char *input)
+record_append(Record_t *rec, size_t len, const char *input,
+              RecordOffset_t *write_offset)
 {
-  size_t needed = len + rec->writeOffset + 1;
-  if (!record_realloc(rec, needed - rec->allocBuf))
+  const uint32_t byte_offset = write_offset->byte_count;
+  const size_t needed = byte_offset + len + 1;
+  if (!record_realloc(rec, needed - rec->alloc_bytes))
     CRASH();
 
-  memcpy(rec->buf + rec->writeOffset, input, len);
-  rec->writeOffset += len;
-  rec->buf[rec->writeOffset++] = 0;
-  rec->usedBuf = MAX(rec->usedBuf, rec->writeOffset);
+  rec->used_bytes = MAX(rec->used_bytes, needed);
+  memcpy(rec->buf + byte_offset, input, len);
+  rec->buf[byte_offset + len] = 0;
+
+  write_offset->byte_count += len + 1;
+  write_offset->command_count++;
+
+  return true;
+}
+
+bool
+record_can_playback(const Record_t *rec, const RecordOffset_t *off)
+{
+  uint32_t read_offset = off->byte_count;
+  if (read_offset >= rec->used_bytes)
+    return false;
+
+  return true;
+}
+
+bool
+record_playback(const Record_t *rec, RecordEvent_t handler,
+                RecordOffset_t *off)
+{
+  uint32_t read_offset = off->byte_count;
+  if (read_offset >= rec->used_bytes)
+    return false;
+
+  size_t length = strlen(&rec->buf[read_offset]);
+  handler(length, &rec->buf[read_offset]);
+
+  off->byte_count += length + 1;
+  off->command_count++;
 
   return true;
 }
 
 void
-record_playback_all(Record_t *rec, RecordEvent_t handler)
+record_playback_all(const Record_t *rec, RecordEvent_t handler)
 {
   size_t length = { 0 };
-  for (int i = 0; i < rec->usedBuf; i += (length + 1)) {
+  for (int i = 0; i < rec->used_bytes; i += (length + 1)) {
     length = strlen(rec->buf + i);
     handler(length, rec->buf + i);
   }
 }
 
-bool
-record_playback(Record_t *rec, RecordEvent_t handler, uint32_t *readOffset)
-{
-  if (*readOffset >= rec->usedBuf)
-    return false;
-
-  size_t length = strlen(&rec->buf[*readOffset]);
-  handler(length, &rec->buf[*readOffset]);
-  *readOffset += length + 1;
-
-  return true;
-}
-
-bool
-record_can_playback(Record_t *rec, uint32_t readOffset)
-{
-  if (readOffset >= rec->usedBuf)
-    return false;
-
-  return true;
-}
-
-void
-record_seek_write(Record_t *rec, size_t nth)
-{
-  int i = 0;
-  for (; nth > 0 && i < rec->usedBuf; ++i) {
-    if (rec->buf[i] == 0) {
-      --nth;
-    }
-  }
-
-  rec->writeOffset = i;
-}
-
 size_t
 record_length(Record_t *rec)
 {
-  return rec->usedBuf;
-}
-
-size_t
-record_write_offset(Record_t *rec)
-{
-  return rec->writeOffset;
+  return rec->used_bytes;
 }
 
 Record_t *
-record_clone(Record_t *rec)
+record_clone(const Record_t *rec)
 {
   Record_t *clone = malloc(sizeof(Record_t));
   *clone = *rec;
-  clone->buf = malloc(clone->allocBuf);
-  memcpy(clone->buf, rec->buf, rec->usedBuf);
+  clone->buf = malloc(clone->alloc_bytes);
+  memcpy(clone->buf, rec->buf, rec->used_bytes);
   return clone;
 }
 
 void
 record_reset(Record_t *rec)
 {
-  rec->writeOffset = rec->usedBuf = 0;
+  rec->used_bytes = 0;
 }
 
 void
@@ -140,7 +128,6 @@ record_free(Record_t *rec)
 void
 record_debug(Record_t *rec)
 {
-  printf("%p: %d alloc %d used %d wo\n", rec, rec->allocBuf, rec->usedBuf,
-         rec->writeOffset);
+  printf("%p: %d alloc %d used\n", rec, rec->alloc_bytes, rec->used_bytes);
 }
 

@@ -153,9 +153,9 @@ loop_sync()
 }
 
 void
-loop_adjustment(size_t pending_bytes)
+loop_adjustment(size_t pending_commands)
 {
-  if (pending_bytes > 40)
+  if (pending_commands > 8)
     tscPerFrame = &tscPerFastFrame;
   else
     tscPerFrame = &tscPerStableFrame;

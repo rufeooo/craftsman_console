@@ -26,8 +26,10 @@ static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
 static bool exiting;
-static Record_t *recording;
-static Record_t *from_network[MAX_PLAYER];
+static Record_t *irec;
+static RecordOffset_t irec_write;
+static Record_t *netrec[MAX_PLAYER];
+static RecordOffset_t netrec_write[MAX_PLAYER];
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
@@ -46,7 +48,7 @@ print_players()
 {
   int count = 0;
   for (int i = 0; i < MAX_PLAYER; ++i) {
-    if (!from_network[i])
+    if (!netrec[i])
       continue;
     ++count;
   }
@@ -308,7 +310,7 @@ input_callback(size_t len, char *input)
     return;
   }
 
-  record_append(recording, len, input);
+  record_append(irec, len, input, &irec_write);
 }
 
 void
@@ -417,15 +419,15 @@ network_io()
         if (client_id >= MAX_PLAYER)
           CRASH();
 
-        if (!from_network[client_id]) {
-          from_network[client_id] = record_alloc();
+        if (!netrec[client_id]) {
+          netrec[client_id] = record_alloc();
           loop_halt();
         }
 
         ++reads[client_id];
         readBytes[client_id] += length;
-        record_append(from_network[client_id], *block_len - 1,
-                      &net_buffer[8]);
+        record_append(netrec[client_id], *block_len - 1, &net_buffer[8],
+                      &netrec_write[client_id]);
       }
       memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
       used_read_buffer -= length;
@@ -436,15 +438,14 @@ network_io()
 }
 
 uint32_t
-network_buffered(Record_t *player_input[static MAX_PLAYER],
-                 uint32_t read_offset[static MAX_PLAYER])
+network_buffered(RecordOffset_t write_offset[static MAX_PLAYER],
+                 RecordOffset_t read_offset[static MAX_PLAYER])
 {
   size_t unread = 0;
   for (int i = 0; i < MAX_PLAYER; ++i) {
-    if (!player_input[i])
-      continue;
-    uint32_t last_read = read_offset[i] - 1;
-    unread = MAX(record_length(player_input[i]) - last_read, unread);
+    uint32_t read = read_offset[i].command_count;
+    uint32_t write = write_offset[i].command_count;
+    unread = MAX(write - read, unread);
   }
 
   return unread;
@@ -452,12 +453,12 @@ network_buffered(Record_t *player_input[static MAX_PLAYER],
 
 bool
 network_input_ready(Record_t *player_input[static MAX_PLAYER],
-                    uint32_t read_offset[static MAX_PLAYER])
+                    RecordOffset_t read_offset[static MAX_PLAYER])
 {
   for (int i = 0; i < MAX_PLAYER; ++i) {
     if (!player_input[i])
       continue;
-    if (record_can_playback(player_input[i], read_offset[i]))
+    if (record_can_playback(player_input[i], &read_offset[i]))
       continue;
     return false;
   }
@@ -468,8 +469,8 @@ network_input_ready(Record_t *player_input[static MAX_PLAYER],
 void
 game_simulation()
 {
-  uint32_t inputRead = 0;
-  uint32_t networkRead[MAX_PLAYER] = { 0 };
+  RecordOffset_t inputRead = { 0 };
+  RecordOffset_t netrec_read[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
@@ -481,7 +482,8 @@ game_simulation()
   used_apply_func = 0;
   memset(result_func, 0, sizeof(result_func));
   used_result_func = 0;
-  record_reset(recording);
+  record_reset(irec);
+  irec_write = (RecordOffset_t){ 0 };
 
   loop_init(10);
   loop_print_status();
@@ -497,13 +499,13 @@ game_simulation()
     notify_poll(notify_callback);
     input_poll(input_callback);
 
-    while (!record_playback(recording, input_to_network, &inputRead)) {
+    while (!record_playback(irec, input_to_network, &inputRead)) {
       if (frame + pauseFrame + 8 < writes) {
         // puts("write suspension");
         break;
       }
 
-      record_append(recording, 0, 0);
+      record_append(irec, 0, 0, &irec_write);
     }
 
     if (!network_io()) {
@@ -512,7 +514,7 @@ game_simulation()
       continue;
     }
 
-    if (!network_input_ready(from_network, networkRead)) {
+    if (!network_input_ready(netrec, netrec_read)) {
       printf(".");
       fflush(stdout);
       loop_stall();
@@ -521,15 +523,15 @@ game_simulation()
 
     // printf("Writes %d skew %d\n", writes, writes - (frame + pauseFrame));
     for (int i = 0; i < MAX_PLAYER; ++i) {
-      if (!from_network[i])
+      if (!netrec[i])
         continue;
-      record_playback(from_network[i], network_to_game, &networkRead[i]);
+      record_playback(netrec[i], network_to_game, &netrec_read[i]);
 
       // printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
     }
 
-    size_t pending = network_buffered(from_network, networkRead);
-    printf("%zu pending bytes\n", pending);
+    size_t pending = network_buffered(netrec_write, netrec_read);
+    printf("%zu pending command\n", pending);
     loop_adjustment(pending);
 
     if (simulationGoal <= loop_frame()) {
@@ -587,14 +589,14 @@ main(int argc, char **argv)
     usleep(300 * 1000);
   }
 
-  recording = record_alloc();
+  irec = record_alloc();
   while (!exiting) {
     game_simulation();
   }
   for (int i = 0; i < MAX_PLAYER; ++i) {
-    record_free(from_network[i]);
+    record_free(netrec[i]);
   }
-  record_free(recording);
+  record_free(irec);
 
   return 0;
 }
