@@ -7,9 +7,9 @@
 
 typedef struct Record_s {
   char *restrict buf;
-  int allocBuf;
-  int usedBuf;
-  int writeOffset;
+  uint32_t allocBuf;
+  uint32_t usedBuf;
+  uint32_t writeOffset;
 } Record_t;
 
 Record_t *
@@ -66,7 +66,7 @@ record_playback_all(Record_t *rec, RecordEvent_t handler)
 }
 
 bool
-record_playback(Record_t *rec, RecordEvent_t handler, int *readOffset)
+record_playback(Record_t *rec, RecordEvent_t handler, uint32_t *readOffset)
 {
   if (*readOffset >= rec->usedBuf)
     return false;
@@ -79,7 +79,7 @@ record_playback(Record_t *rec, RecordEvent_t handler, int *readOffset)
 }
 
 bool
-record_can_playback(Record_t *rec, int readOffset)
+record_can_playback(Record_t *rec, uint32_t readOffset)
 {
   if (readOffset >= rec->usedBuf)
     return false;

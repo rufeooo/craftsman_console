@@ -19,9 +19,9 @@
 #define MAX_PLAYER 4
 #define MAX_FUNC 128
 
-static int writes;
-static int reads[MAX_PLAYER];
-static int readBytes[MAX_PLAYER];
+static uint32_t writes;
+static uint32_t reads[MAX_PLAYER];
+static uint32_t readBytes[MAX_PLAYER];
 static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
@@ -435,9 +435,24 @@ network_io()
   return true;
 }
 
+uint32_t
+network_buffered(Record_t *player_input[static MAX_PLAYER],
+                 uint32_t read_offset[static MAX_PLAYER])
+{
+  size_t unread = 0;
+  for (int i = 0; i < MAX_PLAYER; ++i) {
+    if (!player_input[i])
+      continue;
+    uint32_t last_read = read_offset[i] - 1;
+    unread = MAX(record_length(player_input[i]) - last_read, unread);
+  }
+
+  return unread;
+}
+
 bool
 network_input_ready(Record_t *player_input[static MAX_PLAYER],
-                    int read_offset[static MAX_PLAYER])
+                    uint32_t read_offset[static MAX_PLAYER])
 {
   for (int i = 0; i < MAX_PLAYER; ++i) {
     if (!player_input[i])
@@ -453,8 +468,8 @@ network_input_ready(Record_t *player_input[static MAX_PLAYER],
 void
 game_simulation()
 {
-  int inputRead = 0;
-  int networkRead[MAX_PLAYER] = { 0 };
+  uint32_t inputRead = 0;
+  uint32_t networkRead[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
@@ -512,6 +527,10 @@ game_simulation()
 
       // printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
     }
+
+    size_t pending = network_buffered(from_network, networkRead);
+    printf("%zu pending bytes\n", pending);
+    loop_adjustment(pending);
 
     if (simulationGoal <= loop_frame()) {
       loop_pause();

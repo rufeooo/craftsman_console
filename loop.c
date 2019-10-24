@@ -52,7 +52,9 @@ tsc_per_ms()
 static clock_t clockStart;
 static uint64_t tscStart;
 static uint64_t tscPerMs;
-static uint64_t tscPerFrame;
+static uint64_t *tscPerFrame;
+static uint64_t tscPerFastFrame;
+static uint64_t tscPerStableFrame;
 static uint64_t tsc;
 static uint32_t frame;
 static uint32_t pauseFrame;
@@ -66,7 +68,9 @@ loop_init(uint8_t framerate)
 {
   if (!tscPerMs) {
     tscPerMs = tsc_per_ms();
-    tscPerFrame = 1000 / framerate * tscPerMs;
+    tscPerFastFrame = 100 / framerate * tscPerMs;
+    tscPerStableFrame = 1000 / framerate * tscPerMs;
+    tscPerFrame = &tscPerStableFrame;
     clockStart = clock();
     tscStart = rdtsc();
   }
@@ -109,11 +113,12 @@ loop_frame()
 void
 loop_stall()
 {
+  const uint64_t tscPer = *tscPerFrame;
   ++stallFrame;
   for (;;) {
     uint64_t now = rdtsc();
-    if (now - tsc >= tscPerFrame) {
-      tsc = MIN(tsc + tscPerFrame, now);
+    if (now - tsc >= tscPer) {
+      tsc = MIN(tsc + tscPer, now);
       break;
     }
   }
@@ -122,11 +127,12 @@ loop_stall()
 void
 loop_pause()
 {
+  const uint64_t tscPer = *tscPerFrame;
   ++pauseFrame;
   for (;;) {
     uint64_t now = rdtsc();
-    if (now - tsc >= tscPerFrame) {
-      tsc = MIN(tsc + tscPerFrame, now);
+    if (now - tsc >= tscPer) {
+      tsc = MIN(tsc + tscPer, now);
       break;
     }
   }
@@ -135,14 +141,24 @@ loop_pause()
 void
 loop_sync()
 {
+  const uint64_t tscPer = *tscPerFrame;
   ++frame;
   for (;;) {
     uint64_t now = rdtsc();
-    if (now - tsc >= tscPerFrame) {
-      tsc = MIN(tsc + tscPerFrame, now);
+    if (now - tsc >= tscPer) {
+      tsc = MIN(tsc + tscPer, now);
       break;
     }
   }
+}
+
+void
+loop_adjustment(size_t pending_bytes)
+{
+  if (pending_bytes > 40)
+    tscPerFrame = &tscPerFastFrame;
+  else
+    tscPerFrame = &tscPerStableFrame;
 }
 
 void
