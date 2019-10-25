@@ -19,6 +19,7 @@
 #define MAX_PLAYER 4
 #define MAX_FUNC 128
 
+static bool buffering = false;
 static uint32_t writes;
 static uint32_t reads[MAX_PLAYER];
 static uint32_t readBytes[MAX_PLAYER];
@@ -61,8 +62,9 @@ prompt()
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
   print_players();
-  puts("(q)uit (s)imulation (b)enchmark (a)pply (p)rint (h)ash (o)bject "
-       "(r)eload>");
+  puts(
+    "(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (p)rint (h)ash (o)bject "
+    "(r)eload>");
 }
 
 size_t
@@ -308,6 +310,9 @@ input_callback(size_t len, char *input)
     exiting = true;
     loop_halt();
     return;
+  case 'i':
+    loop_print_status();
+    return;
   }
 
   record_append(irec, len, input, &irec_write);
@@ -344,14 +349,11 @@ input_to_network(size_t len, char *input)
   if (input[len] != 0)
     CRASH();
 
+  ++len;
   ++writes;
-  if (!len) {
-    network_write(1, "");
-    return;
-  }
 
-  printf("network write %zu\n", len);
-  network_write(len + 1, input);
+  ssize_t written = network_write(len, input);
+  buffering = buffering | (written != len);
 }
 
 void
@@ -389,9 +391,25 @@ fixed_atoi(char str[static 3])
          + digit_atoi(str[2]);
 }
 
+uint32_t
+network_players()
+{
+  uint32_t count = 0;
+  for (int i = 0; i < MAX_PLAYER; ++i) {
+    if (!netrec[i])
+      continue;
+    ++count;
+  }
+
+  return count;
+}
+
 bool
 network_io()
 {
+  if (disconnected)
+    return false;
+
   int32_t events = network_poll();
   if ((events & POLLOUT) == 0) {
     puts("network write unavailable\n");
@@ -432,17 +450,23 @@ network_io()
       memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
       used_read_buffer -= length;
     }
+
+    // Hangup after all bytes are drained
+    if (events & POLLHUP) {
+      return bytes != 0;
+    }
   }
 
   return true;
 }
 
 uint32_t
-network_buffered(RecordOffset_t write_offset[static MAX_PLAYER],
-                 RecordOffset_t read_offset[static MAX_PLAYER])
+network_buffered_max(const uint32_t player_count,
+                     RecordOffset_t write_offset[static MAX_PLAYER],
+                     RecordOffset_t read_offset[static MAX_PLAYER])
 {
-  size_t unread = 0;
-  for (int i = 0; i < MAX_PLAYER; ++i) {
+  uint32_t unread = 0;
+  for (int i = 0; i < player_count; ++i) {
     uint32_t read = read_offset[i].command_count;
     uint32_t write = write_offset[i].command_count;
     unread = MAX(write - read, unread);
@@ -451,25 +475,25 @@ network_buffered(RecordOffset_t write_offset[static MAX_PLAYER],
   return unread;
 }
 
-bool
-network_input_ready(Record_t *player_input[static MAX_PLAYER],
-                    RecordOffset_t read_offset[static MAX_PLAYER])
+uint32_t
+network_buffered_min(const uint32_t player_count,
+                     RecordOffset_t write_offset[static MAX_PLAYER],
+                     RecordOffset_t read_offset[static MAX_PLAYER])
 {
-  for (int i = 0; i < MAX_PLAYER; ++i) {
-    if (!player_input[i])
-      continue;
-    if (record_can_playback(player_input[i], &read_offset[i]))
-      continue;
-    return false;
+  uint32_t unread = UINT32_MAX;
+  for (int i = 0; i < player_count; ++i) {
+    uint32_t read = read_offset[i].command_count;
+    uint32_t write = write_offset[i].command_count;
+    unread = MIN(write - read, unread);
   }
 
-  return true;
+  return unread;
 }
 
 void
 game_simulation()
 {
-  const uint32_t FF_THRESHOLD = 10;
+  const int player_count = network_players();
   RecordOffset_t inputRead = { 0 };
   RecordOffset_t netrec_read[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
@@ -495,45 +519,47 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
-    // printf("%d frame %d pause %d stall\n", frame, pauseFrame, stallFrame);
+    printf("%d frame %d pause %d stall %d loop_write_frame\n", frame,
+           pauseFrame, stallFrame, loop_write_frame());
 
     notify_poll(notify_callback);
     input_poll(input_callback);
 
-    while (!record_playback(irec, input_to_network, &inputRead)) {
-      if (frame + pauseFrame + FF_THRESHOLD < writes) {
-        // puts("write suspension");
-        break;
+    while (loop_write_frame() > writes) {
+      if (!record_playback(irec, input_to_network, &inputRead)) {
+        record_append(irec, 0, 0, &irec_write);
       }
-
-      record_append(irec, 0, 0, &irec_write);
     }
 
     if (!network_io()) {
       puts("Network failure.");
       loop_halt();
+      exiting = true;
       continue;
     }
 
-    if (!network_input_ready(netrec, netrec_read)) {
-      printf(".");
+    size_t farthest =
+      network_buffered_max(player_count, netrec_write, netrec_read);
+    size_t nearest =
+      network_buffered_min(player_count, netrec_write, netrec_read);
+    printf("%zu farthest command %zu nearest command\n", farthest, nearest);
+    printf("writes %d\n", writes);
+    for (int i = 0; i < player_count; ++i)
+      printf("reads %d\n", reads[i]);
+    if (!nearest) {
+      printf("+");
       fflush(stdout);
       loop_stall();
       continue;
     }
 
-    // printf("Writes %d skew %d\n", writes, writes - (frame + pauseFrame));
-    for (int i = 0; i < MAX_PLAYER; ++i) {
-      if (!netrec[i])
-        continue;
+    for (int i = 0; i < player_count; ++i) {
       record_playback(netrec[i], network_to_game, &netrec_read[i]);
-
       // printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
     }
 
-    size_t pending = network_buffered(netrec_write, netrec_read);
-    printf("%zu pending command\n", pending);
-    loop_adjustment(pending > FF_THRESHOLD);
+    if (!loop_fast_forward(farthest)) {
+    }
 
     if (simulationGoal <= loop_frame()) {
       loop_pause();

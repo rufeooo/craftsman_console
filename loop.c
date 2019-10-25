@@ -61,6 +61,8 @@ static uint32_t pauseFrame;
 static uint32_t stallFrame;
 static bool running;
 static uint32_t runCount;
+static uint32_t input_queue;
+static uint32_t input_queue_max;
 
 // Implementation
 void
@@ -79,6 +81,7 @@ loop_init(uint8_t framerate)
   pauseFrame = 0;
   stallFrame = 0;
   running = true;
+  input_queue = input_queue_max = framerate;
 }
 
 void
@@ -152,10 +155,30 @@ loop_sync()
   }
 }
 
-void
-loop_adjustment(bool fast_forward)
+uint32_t
+loop_input_frame()
 {
+  return frame + pauseFrame;
+}
+
+uint32_t
+loop_input_queue_max()
+{
+  return input_queue_max;
+}
+
+uint32_t
+loop_write_frame()
+{
+  return frame + pauseFrame + input_queue;
+}
+
+bool
+loop_fast_forward(uint32_t max_queued_commands)
+{
+  bool fast_forward = max_queued_commands > input_queue_max;
   tscPerFrame = fast_forward ? &tscPerFastFrame : &tscPerStableFrame;
+  return fast_forward;
 }
 
 void
