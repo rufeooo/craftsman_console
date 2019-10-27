@@ -6,15 +6,16 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "float.h"
 #include "macro.h"
 #include "rdtsc.h"
 
 // Pure functions
 int
-tsc_order(const void *lhs, const void *rhs)
+tsc_order_double(const void *lhs, const void *rhs)
 {
-  uint64_t lhv = *(uint64_t *) lhs;
-  uint64_t rhv = *(uint64_t *) rhs;
+  double lhv = *(double *) lhs;
+  double rhv = *(double *) rhs;
 
   if (lhv < rhv)
     return -1;
@@ -25,7 +26,7 @@ tsc_order(const void *lhs, const void *rhs)
 }
 
 static uint64_t
-tsc_per_ms()
+tsc_per_us()
 {
   const int DELTA_COUNT = 15;
   uint64_t tscDelta[DELTA_COUNT + 1] = { rdtsc() };
@@ -38,14 +39,18 @@ tsc_per_ms()
     } while ((clockDelta[i] - clockDelta[i - 1]) * 1000 / CLOCKS_PER_SEC < 1);
   }
 
+  double tscPerSec[DELTA_COUNT + 1];
   for (int i = 0; i < DELTA_COUNT; ++i) {
-    clockDelta[i] = (clockDelta[i + 1] - clockDelta[i]);
-    tscDelta[i] = tscDelta[i + 1] - tscDelta[i];
+    uint64_t clock_delta = (clockDelta[i + 1] - clockDelta[i]);
+    uint64_t tsc_delta = tscDelta[i + 1] - tscDelta[i];
+    tscPerSec[i] = to_double(CLOCKS_PER_SEC) * to_double(tsc_delta)
+                   / to_double(clock_delta);
   }
 
-  qsort(tscDelta, DELTA_COUNT, sizeof(tscDelta[0]), tsc_order);
+  qsort(tscPerSec, DELTA_COUNT, ARRAY_MEMBER_SIZE(tscPerSec), tsc_order_double);
 
-  return tscDelta[DELTA_COUNT / 2];
+  const double USEC_PER_SEC = 1000 * 1000;
+  return double_round_uint64(tscPerSec[DELTA_COUNT / 2] / USEC_PER_SEC);
 }
 
 // Memory layout
@@ -69,7 +74,7 @@ void
 loop_init(uint8_t framerate)
 {
   if (!tscPerMs) {
-    tscPerMs = tsc_per_ms();
+    tscPerMs = tsc_per_us() * 1000;
     tscPerFastFrame = 100 / framerate * tscPerMs;
     tscPerStableFrame = 1000 / framerate * tscPerMs;
     tscPerFrame = &tscPerStableFrame;
