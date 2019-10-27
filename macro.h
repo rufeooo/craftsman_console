@@ -2,7 +2,8 @@
 #ifndef __MACRO__H
 #define __MACRO__H
 
-#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
+#define ARRAY_MEMBER_SIZE(arr) (sizeof(*arr))
+#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
 #define ARRAY_LAST_INDEX(arr) (ARRAY_LENGTH(arr) - 1)
 #define NULLTERM(arr) arr[sizeof(arr) - 1] = 0
 #define MAX(a, b) (a > b ? a : b)
