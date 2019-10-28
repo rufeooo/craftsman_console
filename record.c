@@ -100,6 +100,12 @@ record_length(Record_t *rec)
   return rec->used_bytes;
 }
 
+int
+record_compare(const Record_t *lhs, const Record_t *rhs)
+{
+  return memcmp(lhs->buf, rhs->buf, MIN(lhs->used_bytes, rhs->used_bytes));
+}
+
 Record_t *
 record_clone(const Record_t *rec)
 {

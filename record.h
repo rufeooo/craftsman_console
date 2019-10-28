@@ -26,5 +26,7 @@ void record_reset(Record_t *rec);
 void record_free(Record_t *rec);
 
 size_t record_length(Record_t *rec);
+int record_compare(const Record_t* lhs, const Record_t* rhs);
 
 void record_debug(Record_t *rec);
+
