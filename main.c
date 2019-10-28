@@ -488,7 +488,7 @@ network_buffered_min(const uint32_t player_count,
                      RecordOffset_t write_offset[static MAX_PLAYER],
                      RecordOffset_t read_offset[static MAX_PLAYER])
 {
-  uint32_t unread = UINT32_MAX;
+  uint32_t unread = loop_input_queue_max();
   for (int i = 0; i < player_count; ++i) {
     uint32_t read = read_offset[i].command_count;
     uint32_t write = write_offset[i].command_count;
@@ -508,9 +508,11 @@ game_simulation()
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
+  Stats_t net_perf;
   for (int i = 0; i < MAX_SYMBOLS; ++i) {
     stats_init(&perfStats[i]);
   }
+  stats_init(&net_perf);
   memset(apply_func, 0, sizeof(apply_func));
   used_apply_func = 0;
   memset(result_func, 0, sizeof(result_func));
@@ -527,8 +529,10 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
-    printf("%d frame %d pause %d stall loop_write_frame->%d\n", frame,
-           pauseFrame, stallFrame, loop_write_frame());
+    printf("[ %d frame ] [ %d pause ] [ %d stall ] %d input_queue "
+           "loop_write_frame->%d writes %d\n",
+           frame, pauseFrame, stallFrame, input_queue, loop_write_frame(),
+           writes);
 
     if (!network_io()) {
       puts("Network failure.");
@@ -555,9 +559,14 @@ game_simulation()
     if (!nearest) {
       printf("+");
       fflush(stdout);
+      input_queue = MIN(input_queue + 1, input_queue_max);
       loop_stall();
       continue;
     }
+    stats_sample_add(&net_perf, to_double(loop_input_queue() - nearest));
+    printf("(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
+           stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
+           100.0 * stats_rs_dev(&net_perf));
 
     for (int i = 0; i < player_count; ++i) {
       record_playback(netrec[i], network_to_game, &netrec_read[i]);
@@ -566,6 +575,9 @@ game_simulation()
     }
 
     if (!loop_fast_forward(farthest)) {
+      if (nearest > 1) {
+        input_queue = MAX((signed) input_queue - 1, 0);
+      }
     }
 
     if (simulationGoal <= loop_frame()) {
@@ -625,7 +637,7 @@ main(int argc, char **argv)
       return 1;
     }
 
-    puts("Waiting for connection %d %d\n");
+    puts("Waiting for connection");
     usleep(300 * 1000);
   }
 

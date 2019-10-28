@@ -47,7 +47,8 @@ tsc_per_us()
                    / to_double(clock_delta);
   }
 
-  qsort(tscPerSec, DELTA_COUNT, ARRAY_MEMBER_SIZE(tscPerSec), tsc_order_double);
+  qsort(tscPerSec, DELTA_COUNT, ARRAY_MEMBER_SIZE(tscPerSec),
+        tsc_order_double);
 
   const double USEC_PER_SEC = 1000 * 1000;
   return double_round_uint64(tscPerSec[DELTA_COUNT / 2] / USEC_PER_SEC);
@@ -164,6 +165,12 @@ uint32_t
 loop_input_frame()
 {
   return frame + pauseFrame;
+}
+
+uint32_t
+loop_input_queue()
+{
+  return input_queue;
 }
 
 uint32_t
