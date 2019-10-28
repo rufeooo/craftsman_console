@@ -427,32 +427,6 @@ network_io()
       return false;
     }
     used_read_buffer += bytes;
-    while (used_read_buffer >= 8) {
-      int *block_len = (int *) net_buffer;
-      int length = 8 + *block_len;
-      if (used_read_buffer < length)
-        break;
-
-      if (length > 9) {
-        printf("Received big message %d: %s %s\n", length, &net_buffer[4],
-               &net_buffer[8]);
-      }
-      int client_id = fixed_atoi(&net_buffer[4]);
-      if (client_id >= MAX_PLAYER)
-        CRASH();
-
-      if (!netrec[client_id]) {
-        netrec[client_id] = record_alloc();
-        loop_halt();
-      }
-
-      ++reads[client_id];
-      processed_bytes[client_id] += length;
-      record_append(netrec[client_id], *block_len - 1, &net_buffer[8],
-                    &netrec_write[client_id]);
-      memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
-      used_read_buffer -= length;
-    }
 
     // Hangup after all bytes are drained
     if (events & POLLHUP) {
@@ -461,6 +435,37 @@ network_io()
   }
 
   return true;
+}
+
+void
+network_processing()
+{
+  while (used_read_buffer >= 8) {
+    int *block_len = (int *) net_buffer;
+    int length = 8 + *block_len;
+    if (used_read_buffer < length)
+      break;
+
+    if (length > 9) {
+      printf("Received big message %d: %s %s\n", length, &net_buffer[4],
+             &net_buffer[8]);
+    }
+    int client_id = fixed_atoi(&net_buffer[4]);
+    if (client_id >= MAX_PLAYER)
+      CRASH();
+
+    if (!netrec[client_id]) {
+      netrec[client_id] = record_alloc();
+      loop_halt();
+    }
+
+    ++reads[client_id];
+    processed_bytes[client_id] += length;
+    record_append(netrec[client_id], *block_len - 1, &net_buffer[8],
+                  &netrec_write[client_id]);
+    memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
+    used_read_buffer -= length;
+  }
 }
 
 uint32_t
@@ -532,6 +537,7 @@ game_simulation()
       continue;
     }
 
+    network_processing();
     notify_poll(notify_callback);
     input_poll(input_callback);
 
