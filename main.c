@@ -21,8 +21,11 @@
 
 static bool buffering = false;
 static uint32_t writes;
+static char net_buffer[4096];
+static ssize_t used_read_buffer;
+static uint32_t received_bytes;
 static uint32_t reads[MAX_PLAYER];
-static uint32_t readBytes[MAX_PLAYER];
+static uint32_t processed_bytes[MAX_PLAYER];
 static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
@@ -417,10 +420,9 @@ network_io()
   }
 
   if (events & POLLIN) {
-    static char net_buffer[4096];
-    static ssize_t used_read_buffer;
     ssize_t bytes = network_read(sizeof(net_buffer) - used_read_buffer,
                                  net_buffer + used_read_buffer);
+    received_bytes += bytes;
     if (bytes == -1) {
       return false;
     }
@@ -428,25 +430,26 @@ network_io()
     while (used_read_buffer >= 8) {
       int *block_len = (int *) net_buffer;
       int length = 8 + *block_len;
-      if (used_read_buffer >= length) {
-        if (length > 9) {
-          printf("Received big message %d: %s %s\n", length, &net_buffer[4],
-                 &net_buffer[8]);
-        }
-        int client_id = fixed_atoi(&net_buffer[4]);
-        if (client_id >= MAX_PLAYER)
-          CRASH();
+      if (used_read_buffer < length)
+        break;
 
-        if (!netrec[client_id]) {
-          netrec[client_id] = record_alloc();
-          loop_halt();
-        }
-
-        ++reads[client_id];
-        readBytes[client_id] += length;
-        record_append(netrec[client_id], *block_len - 1, &net_buffer[8],
-                      &netrec_write[client_id]);
+      if (length > 9) {
+        printf("Received big message %d: %s %s\n", length, &net_buffer[4],
+               &net_buffer[8]);
       }
+      int client_id = fixed_atoi(&net_buffer[4]);
+      if (client_id >= MAX_PLAYER)
+        CRASH();
+
+      if (!netrec[client_id]) {
+        netrec[client_id] = record_alloc();
+        loop_halt();
+      }
+
+      ++reads[client_id];
+      processed_bytes[client_id] += length;
+      record_append(netrec[client_id], *block_len - 1, &net_buffer[8],
+                    &netrec_write[client_id]);
       memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
       used_read_buffer -= length;
     }
@@ -519,8 +522,15 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
-    printf("%d frame %d pause %d stall %d loop_write_frame\n", frame,
+    printf("%d frame %d pause %d stall loop_write_frame->%d\n", frame,
            pauseFrame, stallFrame, loop_write_frame());
+
+    if (!network_io()) {
+      puts("Network failure.");
+      loop_halt();
+      exiting = true;
+      continue;
+    }
 
     notify_poll(notify_callback);
     input_poll(input_callback);
@@ -531,21 +541,11 @@ game_simulation()
       }
     }
 
-    if (!network_io()) {
-      puts("Network failure.");
-      loop_halt();
-      exiting = true;
-      continue;
-    }
-
     size_t farthest =
       network_buffered_max(player_count, netrec_write, netrec_read);
     size_t nearest =
       network_buffered_min(player_count, netrec_write, netrec_read);
     printf("%zu farthest command %zu nearest command\n", farthest, nearest);
-    printf("writes %d\n", writes);
-    for (int i = 0; i < player_count; ++i)
-      printf("reads %d\n", reads[i]);
     if (!nearest) {
       printf("+");
       fflush(stdout);
@@ -555,7 +555,8 @@ game_simulation()
 
     for (int i = 0; i < player_count; ++i) {
       record_playback(netrec[i], network_to_game, &netrec_read[i]);
-      // printf("%d: %d reads %d readBytes\n", i, reads[i], readBytes[i]);
+      // printf("%d: %d reads %d processed_bytes\n", i, reads[i],
+      // processed_bytes[i]);
     }
 
     if (!loop_fast_forward(farthest)) {
@@ -590,6 +591,12 @@ game_simulation()
     }
 
     loop_sync();
+  }
+  puts("--net stats");
+  printf("Received_bytes %d  unprocessed %zu\n", received_bytes,
+         used_read_buffer);
+  for (int i = 0; i < player_count; ++i) {
+    printf("player %d: %d reads %d bytes\n", i, reads[i], processed_bytes[i]);
   }
   puts("--simulation performance");
   print_runtime_perf(dlfnUsedSymbols, perfStats);
