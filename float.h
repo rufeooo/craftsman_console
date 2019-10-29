@@ -6,12 +6,12 @@
 #pragma STDC FP_CONTRACT OFF
 
 #if _d_BigEndian_
-const uint32_t _d_iexp_ = 0;
-const uint32_t _d_iman_ = 1;
+#define _d_EXP 0
+#define _d_MAN 1
 #else
-const uint32_t _d_iexp_ = 1;
-const uint32_t _d_iman_ = 0;
-#endif // BigEndian_
+#define _d_EXP 1
+#define _d_MAN 0
+#endif
 
 #ifndef INLINE
 #define INLINE __attribute__((always_inline)) inline
@@ -55,13 +55,13 @@ double_uint64(double d)
 INLINE uint32_t
 double_sign(double d)
 {
-  return ((int32_t *) &d)[_d_iexp_] & 0x80000000;
+  return ((int32_t *) &d)[_d_EXP] & 0x80000000;
 }
 
 INLINE void
 double_signxor(double *d, double o)
 {
-  ((int32_t *) d)[_d_iexp_] ^= double_sign(o);
+  ((int32_t *) d)[_d_EXP] ^= double_sign(o);
 }
 
 INLINE uint64_t
