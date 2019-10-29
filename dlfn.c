@@ -122,7 +122,6 @@ parse_symtab(void *addr, void *symtab, void *strtab)
     Symbol_t s = { .name = &strtab[iter->st_name],
                    .fnctor = functor_init((void *) (addr + iter->st_value)) };
     add_symbol(s);
-    printf("Symbol %s addr %p\n", s.name, s.fnctor.call);
   }
 
   iter = symtab;
@@ -131,14 +130,12 @@ parse_symtab(void *addr, void *symtab, void *strtab)
       continue;
     if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL)
       continue;
-    if (strcmp(&strtab[iter->st_name], "tick"))
-      continue;
     Object_t o = { .name = &strtab[iter->st_name],
                    .address = addr + iter->st_value,
                    .bytes = iter->st_size };
 
     add_object(o);
-    printf("global object %s addr %p\n", o.name, o.address);
+    printf("Object %s: %p\n", o.name, o.address);
   }
 }
 
