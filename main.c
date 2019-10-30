@@ -240,7 +240,7 @@ execute_object(size_t len, char *input)
 void
 execute_hash(size_t len, char *input)
 {
-  uint64_t hash_seed = 0;
+  uint64_t hash_seed = 5381;
   for (int i = 0; i < dlfnUsedObjects; ++i) {
     hash_seed =
       memhash_cont(hash_seed, dlfnObjects[i].address, dlfnObjects[i].bytes);
@@ -529,10 +529,10 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
-    printf("[ %d frame ] [ %d pause ] [ %d stall ] %d input_queue "
+    /*printf("[ %d frame ] [ %d pause ] [ %d stall ] %d input_queue "
            "loop_write_frame->%d writes %d\n",
            frame, pauseFrame, stallFrame, input_queue, loop_write_frame(),
-           writes);
+           writes);*/
 
     if (!network_io()) {
       puts("Network failure.");
@@ -555,7 +555,7 @@ game_simulation()
       network_buffered_max(player_count, netrec_write, netrec_read);
     size_t nearest =
       network_buffered_min(player_count, netrec_write, netrec_read);
-    printf("%zu farthest command %zu nearest command\n", farthest, nearest);
+    //printf("%zu farthest command %zu nearest command\n", farthest, nearest);
     if (!nearest) {
       printf("+");
       fflush(stdout);
@@ -564,9 +564,9 @@ game_simulation()
       continue;
     }
     stats_sample_add(&net_perf, to_double(loop_input_queue() - nearest));
-    printf("(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
+    /*printf("(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
            stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
-           100.0 * stats_rs_dev(&net_perf));
+           100.0 * stats_rs_dev(&net_perf));*/
 
     for (int i = 0; i < player_count; ++i) {
       record_playback(netrec[i], network_to_game, &netrec_read[i]);
