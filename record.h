@@ -19,12 +19,15 @@ typedef struct Record_s Record_t;
 
 LOCAL Record_t *record_alloc();
 LOCAL bool record_append(Record_t *rec, size_t len, const char *input,
-                         RecordOffset_t *write_offset);
+                         RecordOffset_t *off);
 LOCAL bool record_can_playback(const Record_t *rec,
-                               const RecordOffset_t *read_offset);
+                               const RecordOffset_t *off);
 LOCAL bool record_playback(const Record_t *rec, RecordEvent_t handler,
-                           RecordOffset_t *read_offset);
-LOCAL void record_playback_all(const Record_t *rec, RecordEvent_t handler);
+                           RecordOffset_t *read_off);
+LOCAL const char *record_peek(const Record_t *rec, const RecordOffset_t *off);
+LOCAL const char *record_read(const Record_t *rec, RecordOffset_t *off,
+                              size_t *len);
+void record_playback_all(const Record_t *rec, RecordEvent_t handler);
 LOCAL Record_t *record_clone(const Record_t *rec);
 LOCAL void record_reset(Record_t *rec);
 LOCAL void record_free(Record_t *rec);

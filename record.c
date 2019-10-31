@@ -40,9 +40,9 @@ record_realloc(Record_t *rec, int bytesNeeded)
 
 bool
 record_append(Record_t *rec, size_t len, const char *input,
-              RecordOffset_t *write_offset)
+              RecordOffset_t *off)
 {
-  const uint32_t byte_offset = write_offset->byte_count;
+  const uint32_t byte_offset = off->byte_count;
   const size_t needed = byte_offset + len + 1;
   if (!record_realloc(rec, needed - rec->alloc_bytes))
     CRASH();
@@ -51,8 +51,8 @@ record_append(Record_t *rec, size_t len, const char *input,
   memcpy(rec->buf + byte_offset, input, len);
   rec->buf[byte_offset + len] = 0;
 
-  write_offset->byte_count += len + 1;
-  write_offset->command_count++;
+  off->byte_count += len + 1;
+  off->command_count++;
 
   return true;
 }
@@ -82,6 +82,33 @@ record_playback(const Record_t *rec, RecordEvent_t handler,
   off->command_count++;
 
   return true;
+}
+
+const char *
+record_peek(const Record_t *rec, const RecordOffset_t *off)
+{
+  uint32_t read_offset = off->byte_count;
+  if (read_offset >= rec->used_bytes)
+    return 0;
+
+  return &rec->buf[read_offset];
+}
+
+LOCAL const char *
+record_read(const Record_t *rec, RecordOffset_t *off, size_t *len)
+{
+  uint32_t read_offset = off->byte_count;
+  if (read_offset >= rec->used_bytes)
+    return 0;
+
+  const char *cmd = &rec->buf[read_offset];
+  size_t length = strlen(cmd);
+
+  off->byte_count += length + 1;
+  off->command_count++;
+
+  *len = length;
+  return cmd;
 }
 
 void
