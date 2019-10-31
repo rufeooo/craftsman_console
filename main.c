@@ -385,17 +385,7 @@ game_simulation()
            frame, pauseFrame, stallFrame, input_queue, loop_write_frame(),
            writes);
 
-    if (!connection_io()) {
-      puts("Network failure.");
-      loop_halt();
-      exiting = true;
-      continue;
-    }
-
-    if (!connection_processing(gamerec)) {
-      loop_halt();
-      continue;
-    }
+    int status = connection_sync(gamerec);
 
     notify_poll(notify_callback);
     input_poll(input_callback);
@@ -405,6 +395,17 @@ game_simulation()
         record_append(irec, 0, 0, &irec_write);
       }
     }
+
+    switch (status) {
+    case CONN_TERM:
+      puts("Network failure.");
+      loop_halt();
+      exiting = true;
+      continue;
+    case CONN_CHANGE:
+      loop_halt();
+      continue;
+    };
 
     size_t nearest, farthest;
     connection_queue(gamerec, &nearest, &farthest);

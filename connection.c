@@ -7,6 +7,8 @@
 
 #define MAX_PLAYER 4
 
+enum { CONN_OK, CONN_TERM, CONN_CHANGE, CONN_STALL };
+
 static char net_buffer[4096];
 static ssize_t used_read_buffer;
 static uint32_t received_bytes;
@@ -200,4 +202,18 @@ connection_print_stats()
   for (int i = 0; i < MAX_PLAYER; ++i) {
     printf("player %d: %d reads %d bytes\n", i, reads[i], processed_bytes[i]);
   }
+}
+
+int
+connection_sync(Record_t *recording[static MAX_PLAYER])
+{
+  if (!connection_io()) {
+    return CONN_TERM;
+  }
+
+  if (!connection_processing(recording)) {
+    return CONN_CHANGE;
+  }
+
+  return CONN_OK;
 }
