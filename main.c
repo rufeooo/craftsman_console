@@ -26,7 +26,8 @@ static uint32_t simulationGoal;
 static bool exiting;
 static Record_t *irec;
 static RecordOffset_t irec_write;
-static Record_t *netrec[MAX_PLAYER];
+static RecordOffset_t irec_read;
+static Record_t *gamerec[MAX_PLAYER];
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
@@ -45,7 +46,7 @@ print_players()
 {
   int count = 0;
   for (int i = 0; i < MAX_PLAYER; ++i) {
-    if (!netrec[i])
+    if (!gamerec[i])
       continue;
     ++count;
   }
@@ -366,7 +367,6 @@ notify_callback(int idx, const struct inotify_event *event)
 void
 game_simulation()
 {
-  RecordOffset_t inputRead = { 0 };
   char *watchDirs[] = { "code" };
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
@@ -380,8 +380,6 @@ game_simulation()
   used_apply_func = 0;
   memset(result_func, 0, sizeof(result_func));
   used_result_func = 0;
-  record_reset(irec);
-  irec_write = (RecordOffset_t){ 0 };
   connection_reset_read();
 
   loop_init(10);
@@ -405,7 +403,7 @@ game_simulation()
       continue;
     }
 
-    if (!connection_processing(netrec)) {
+    if (!connection_processing(gamerec)) {
       loop_halt();
       continue;
     }
@@ -414,13 +412,13 @@ game_simulation()
     input_poll(input_callback);
 
     while (loop_write_frame() > writes) {
-      if (!record_playback(irec, input_to_network, &inputRead)) {
+      if (!record_playback(irec, input_to_network, &irec_read)) {
         record_append(irec, 0, 0, &irec_write);
       }
     }
 
     size_t nearest, farthest;
-    connection_queue(netrec, &nearest, &farthest);
+    connection_queue(gamerec, &nearest, &farthest);
     // printf("%zu farthest command %zu nearest command\n", farthest,
     // nearest);
     if (!nearest) {
@@ -437,7 +435,7 @@ game_simulation()
 
     static char buffer[4096];
     size_t command_size[MAX_PLAYER];
-    int command_count = connection_frame(netrec, buffer, command_size);
+    int command_count = connection_frame(gamerec, buffer, command_size);
     char *next_command = buffer;
     for (int i = 0; i < command_count; ++i) {
       game_action(command_size[i], next_command);
@@ -503,7 +501,7 @@ main(int argc, char **argv)
     game_simulation();
   }
   for (int i = 0; i < MAX_PLAYER; ++i) {
-    record_free(netrec[i]);
+    record_free(gamerec[i]);
   }
   record_free(irec);
 
