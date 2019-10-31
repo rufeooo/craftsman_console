@@ -58,7 +58,7 @@ connection_buffered_min(const uint32_t player_count,
   return unread;
 }
 
-static uint32_t
+uint32_t
 connection_players(Record_t *recording[static MAX_PLAYER])
 {
   uint32_t count = 0;

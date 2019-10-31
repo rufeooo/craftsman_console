@@ -42,23 +42,11 @@ print_result(const Symbol_t *sym, size_t r)
 }
 
 void
-print_players()
-{
-  int count = 0;
-  for (int i = 0; i < MAX_PLAYER; ++i) {
-    if (!gamerec[i])
-      continue;
-    ++count;
-  }
-  printf("Player Count: %d.\n", count);
-}
-
-void
 prompt()
 {
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
-  print_players();
+  printf("Player Count: %d.\n", connection_players(gamerec));
   puts(
     "(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (p)rint (h)ash (o)bject "
     "(r)eload>");
