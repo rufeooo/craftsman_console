@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "connection.c"
 #include "dlfn.h"
 #include "float.h"
 #include "functor.h"
@@ -11,21 +12,14 @@
 #include "input.h"
 #include "loop.c"
 #include "macro.h"
-#include "network.c"
 #include "notify.h"
 #include "record.h"
 #include "stats.h"
 
-#define MAX_PLAYER 4
 #define MAX_FUNC 128
 
 static bool buffering = false;
 static uint32_t writes;
-static char net_buffer[4096];
-static ssize_t used_read_buffer;
-static uint32_t received_bytes;
-static uint32_t reads[MAX_PLAYER];
-static uint32_t processed_bytes[MAX_PLAYER];
 static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
@@ -33,7 +27,6 @@ static bool exiting;
 static Record_t *irec;
 static RecordOffset_t irec_write;
 static Record_t *netrec[MAX_PLAYER];
-static RecordOffset_t netrec_write[MAX_PLAYER];
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
@@ -360,17 +353,6 @@ input_to_network(size_t len, char *input)
 }
 
 void
-network_to_game(size_t len, char *input)
-{
-  static char buffer[4096];
-
-  memcpy(buffer, input, len);
-  buffer[len] = 0;
-
-  game_action(len, buffer);
-}
-
-void
 notify_callback(int idx, const struct inotify_event *event)
 {
   printf("File change %s\n", event->name);
@@ -381,129 +363,10 @@ notify_callback(int idx, const struct inotify_event *event)
   loop_halt();
 }
 
-int
-digit_atoi(char c)
-{
-  return c - '0';
-}
-
-int
-fixed_atoi(char str[static 3])
-{
-  return digit_atoi(str[0]) * 100 + digit_atoi(str[1]) * 10
-         + digit_atoi(str[2]);
-}
-
-uint32_t
-network_players()
-{
-  uint32_t count = 0;
-  for (int i = 0; i < MAX_PLAYER; ++i) {
-    if (!netrec[i])
-      continue;
-    ++count;
-  }
-
-  return count;
-}
-
-bool
-network_io()
-{
-  if (disconnected)
-    return false;
-
-  int32_t events = network_poll();
-  if ((events & POLLOUT) == 0) {
-    puts("network write unavailable\n");
-    return false;
-  }
-
-  if (events & POLLIN) {
-    ssize_t bytes = network_read(sizeof(net_buffer) - used_read_buffer,
-                                 net_buffer + used_read_buffer);
-    received_bytes += bytes;
-    if (bytes == -1) {
-      return false;
-    }
-    used_read_buffer += bytes;
-
-    // Hangup after all bytes are drained
-    if (events & POLLHUP) {
-      return bytes != 0;
-    }
-  }
-
-  return true;
-}
-
-void
-network_processing()
-{
-  while (used_read_buffer >= 8) {
-    int *block_len = (int *) net_buffer;
-    int length = 8 + *block_len;
-    if (used_read_buffer < length)
-      break;
-
-    if (length > 9) {
-      printf("Received big message %d: %s %s\n", length, &net_buffer[4],
-             &net_buffer[8]);
-    }
-    int client_id = fixed_atoi(&net_buffer[4]);
-    if (client_id >= MAX_PLAYER)
-      CRASH();
-
-    if (!netrec[client_id]) {
-      netrec[client_id] = record_alloc();
-      loop_halt();
-    }
-
-    ++reads[client_id];
-    processed_bytes[client_id] += length;
-    record_append(netrec[client_id], *block_len - 1, &net_buffer[8],
-                  &netrec_write[client_id]);
-    memmove(net_buffer, net_buffer + length, sizeof(net_buffer) - length);
-    used_read_buffer -= length;
-  }
-}
-
-uint32_t
-network_buffered_max(const uint32_t player_count,
-                     RecordOffset_t write_offset[static MAX_PLAYER],
-                     RecordOffset_t read_offset[static MAX_PLAYER])
-{
-  uint32_t unread = 0;
-  for (int i = 0; i < player_count; ++i) {
-    uint32_t read = read_offset[i].command_count;
-    uint32_t write = write_offset[i].command_count;
-    unread = MAX(write - read, unread);
-  }
-
-  return unread;
-}
-
-uint32_t
-network_buffered_min(const uint32_t player_count,
-                     RecordOffset_t write_offset[static MAX_PLAYER],
-                     RecordOffset_t read_offset[static MAX_PLAYER])
-{
-  uint32_t unread = loop_input_queue_max();
-  for (int i = 0; i < player_count; ++i) {
-    uint32_t read = read_offset[i].command_count;
-    uint32_t write = write_offset[i].command_count;
-    unread = MIN(write - read, unread);
-  }
-
-  return unread;
-}
-
 void
 game_simulation()
 {
-  const int player_count = network_players();
   RecordOffset_t inputRead = { 0 };
-  RecordOffset_t netrec_read[MAX_PLAYER] = { 0 };
   char *watchDirs[] = { "code" };
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
@@ -519,6 +382,7 @@ game_simulation()
   used_result_func = 0;
   record_reset(irec);
   irec_write = (RecordOffset_t){ 0 };
+  connection_reset_read();
 
   loop_init(10);
   loop_print_status();
@@ -529,19 +393,23 @@ game_simulation()
   input_init();
   prompt();
   while (loop_run()) {
-    /*printf("[ %d frame ] [ %d pause ] [ %d stall ] %d input_queue "
+    printf("[ %d frame ] [ %d pause ] [ %d stall ] %d input_queue "
            "loop_write_frame->%d writes %d\n",
            frame, pauseFrame, stallFrame, input_queue, loop_write_frame(),
-           writes);*/
+           writes);
 
-    if (!network_io()) {
+    if (!connection_io()) {
       puts("Network failure.");
       loop_halt();
       exiting = true;
       continue;
     }
 
-    network_processing();
+    if (!connection_processing(netrec)) {
+      loop_halt();
+      continue;
+    }
+
     notify_poll(notify_callback);
     input_poll(input_callback);
 
@@ -551,11 +419,10 @@ game_simulation()
       }
     }
 
-    size_t farthest =
-      network_buffered_max(player_count, netrec_write, netrec_read);
-    size_t nearest =
-      network_buffered_min(player_count, netrec_write, netrec_read);
-    //printf("%zu farthest command %zu nearest command\n", farthest, nearest);
+    size_t nearest, farthest;
+    connection_queue(netrec, &nearest, &farthest);
+    // printf("%zu farthest command %zu nearest command\n", farthest,
+    // nearest);
     if (!nearest) {
       printf("+");
       fflush(stdout);
@@ -568,10 +435,13 @@ game_simulation()
            stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
            100.0 * stats_rs_dev(&net_perf));*/
 
-    for (int i = 0; i < player_count; ++i) {
-      record_playback(netrec[i], network_to_game, &netrec_read[i]);
-      // printf("%d: %d reads %d processed_bytes\n", i, reads[i],
-      // processed_bytes[i]);
+    static char buffer[4096];
+    size_t command_size[MAX_PLAYER];
+    int command_count = connection_frame(netrec, buffer, command_size);
+    char *next_command = buffer;
+    for (int i = 0; i < command_count; ++i) {
+      game_action(command_size[i], next_command);
+      next_command += command_size[i] + 1;
     }
 
     if (!loop_fast_forward(farthest)) {
@@ -610,12 +480,7 @@ game_simulation()
 
     loop_sync();
   }
-  puts("--net stats");
-  printf("Received_bytes %d  unprocessed %zu\n", received_bytes,
-         used_read_buffer);
-  for (int i = 0; i < player_count; ++i) {
-    printf("player %d: %d reads %d bytes\n", i, reads[i], processed_bytes[i]);
-  }
+  connection_print_stats();
   puts("--simulation performance");
   print_runtime_perf(dlfnUsedSymbols, perfStats);
   loop_print_status();
@@ -628,17 +493,9 @@ game_simulation()
 int
 main(int argc, char **argv)
 {
-  bool configured = network_configure("gamehost.rufe.org", "4000");
-  bool connected = network_connect();
-
-  while (!network_ready()) {
-    if (disconnected) {
-      puts("Network unable to connect.");
-      return 1;
-    }
-
-    puts("Waiting for connection");
-    usleep(300 * 1000);
+  if (!connection_establish()) {
+    puts("Failed to connect");
+    return 1;
   }
 
   irec = record_alloc();
