@@ -17,6 +17,7 @@
 #include "stats.h"
 
 #define MAX_FUNC 128
+#define GAME_BUFFER 4096
 
 static bool buffering = false;
 static uint32_t writes;
@@ -421,9 +422,10 @@ game_simulation()
            stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
            100.0 * stats_rs_dev(&net_perf));*/
 
-    static char buffer[4096];
+    static char buffer[GAME_BUFFER];
     size_t command_size[MAX_PLAYER];
-    int command_count = connection_frame(gamerec, buffer, command_size);
+    int command_count =
+      connection_frame(gamerec, GAME_BUFFER, buffer, command_size);
     char *next_command = buffer;
     for (int i = 0; i < command_count; ++i) {
       game_action(command_size[i], next_command);

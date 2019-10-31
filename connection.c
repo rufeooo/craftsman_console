@@ -171,8 +171,8 @@ connection_queue(Record_t *recording[static MAX_PLAYER], size_t *nearest,
 }
 
 int
-connection_frame(Record_t *recording[static MAX_PLAYER], char *buffer,
-                 size_t command_size[static MAX_PLAYER])
+connection_frame(Record_t *recording[static MAX_PLAYER], size_t n,
+                 char buffer[n], size_t command_size[static MAX_PLAYER])
 {
   const int player_count = connection_players(recording);
 
@@ -180,9 +180,12 @@ connection_frame(Record_t *recording[static MAX_PLAYER], char *buffer,
     size_t cmd_len;
     const char *cmd = record_read(recording[i], &netrec_read[i], &cmd_len);
     command_size[i] = cmd_len;
+    if (cmd_len > n)
+      return i - 1;
     memcpy(buffer, cmd, cmd_len);
     buffer[cmd_len] = 0;
     buffer += cmd_len + 1;
+    n -= cmd_len + 1;
   }
 
   return player_count;
