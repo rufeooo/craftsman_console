@@ -34,6 +34,52 @@ static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
 static size_t used_result_func;
 
+typedef struct {
+  uint32_t turn_nearest;
+  uint32_t turn_farthest;
+  uint32_t turn_command_count;
+  char *command[MAX_PLAYER];
+  size_t command_len[MAX_PLAYER];
+} CommandQueue_t;
+
+#define FRAME_BUF_LEN 4096
+bool
+sp_frame(size_t player_count, Record_t *recording[static player_count],
+         RecordOffset_t read[static player_count],
+         RecordOffset_t write[static player_count], CommandQueue_t *out_state)
+{
+  static char buffer[FRAME_BUF_LEN];
+  CommandQueue_t ret_state = { .turn_nearest = loop_input_queue_max(),
+                               .turn_farthest = 0,
+                               .turn_command_count = player_count };
+  char *buffer_write = buffer;
+  char *buffer_end = buffer + FRAME_BUF_LEN;
+  for (int i = 0; i < player_count; ++i) {
+    uint32_t rcmd = read[i].command_count;
+    uint32_t wcmd = write[i].command_count;
+
+    ret_state.turn_farthest = MAX(wcmd - rcmd, ret_state.turn_farthest);
+    ret_state.turn_nearest = MIN(wcmd - rcmd, ret_state.turn_nearest);
+  }
+
+  for (int i = 0; i < player_count; ++i) {
+    size_t cmd_len;
+    const char *cmd = record_read(recording[i], &read[i], &cmd_len);
+    if (buffer_write + cmd_len >= buffer_end)
+      return false;
+    memcpy(buffer_write, cmd, cmd_len);
+    buffer_write[cmd_len] = 0;
+
+    ret_state.command[i] = buffer_write;
+    ret_state.command_len[i] = cmd_len;
+    buffer_write += cmd_len + 1;
+  }
+
+  *out_state = ret_state;
+
+  return true;
+}
+
 size_t
 print_result(const Symbol_t *sym, size_t r)
 {
@@ -356,6 +402,7 @@ notify_callback(int idx, const struct inotify_event *event)
 void
 game_simulation()
 {
+  const int player_count = 1; // TODO: dynamic
   char *watchDirs[] = { "code" };
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
@@ -385,56 +432,21 @@ game_simulation()
            frame, pauseFrame, stallFrame, input_queue, loop_write_frame(),
            writes);
 
-    int status = connection_sync(gamerec);
-
     notify_poll(notify_callback);
     input_poll(input_callback);
 
-    while (loop_write_frame() > writes) {
-      if (!record_playback(irec, input_to_network, &irec_read)) {
-        record_append(irec, 0, 0, &irec_write);
-      }
+    if (!record_peek(irec, &irec_read))
+      record_append(irec, 0, 0, &irec_write);
+
+    CommandQueue_t queue;
+    if (!sp_frame(player_count, &irec, &irec_read, &irec_write, &queue))
+      CRASH();
+    for (int i = 0; i < queue.turn_command_count; ++i) {
+      game_action(queue.command_len[i], queue.command[i]);
     }
 
-    switch (status) {
-    case CONN_TERM:
-      puts("Network failure.");
-      loop_halt();
-      exiting = true;
-      continue;
-    case CONN_CHANGE:
-      loop_halt();
-      continue;
-    };
-
-    size_t nearest, farthest;
-    connection_queue(gamerec, &nearest, &farthest);
-    // printf("%zu farthest command %zu nearest command\n", farthest,
-    // nearest);
-    if (!nearest) {
-      printf("+");
-      fflush(stdout);
-      input_queue = MIN(input_queue + 1, input_queue_max);
-      loop_stall();
-      continue;
-    }
-    stats_sample_add(&net_perf, to_double(loop_input_queue() - nearest));
-    /*printf("(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-           stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
-           100.0 * stats_rs_dev(&net_perf));*/
-
-    static char buffer[GAME_BUFFER];
-    size_t command_size[MAX_PLAYER];
-    int command_count =
-      connection_frame(gamerec, GAME_BUFFER, buffer, command_size);
-    char *next_command = buffer;
-    for (int i = 0; i < command_count; ++i) {
-      game_action(command_size[i], next_command);
-      next_command += command_size[i] + 1;
-    }
-
-    if (!loop_fast_forward(farthest)) {
-      if (nearest > 1) {
+    if (!loop_fast_forward(queue.turn_farthest)) {
+      if (queue.turn_nearest > 1) {
         input_queue = MAX((signed) input_queue - 1, 0);
       }
     }
@@ -482,11 +494,6 @@ game_simulation()
 int
 main(int argc, char **argv)
 {
-  if (!connection_establish()) {
-    puts("Failed to connect");
-    return 1;
-  }
-
   irec = record_alloc();
   while (!exiting) {
     game_simulation();
