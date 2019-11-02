@@ -18,12 +18,11 @@
 
 #define MAX_FUNC 128
 #define GAME_BUFFER 4096
+#define SIMULATION_MAX UINT32_MAX
 
 static bool buffering = false;
-static uint32_t writes;
 static const char *dlpath = "code/feature.so";
-static const uint32_t simulationMax = UINT32_MAX;
-static uint32_t simulationGoal;
+static uint32_t simulation_goal;
 static bool exiting;
 static RecordRW_t *input_rw;
 static Functor_t apply_func[MAX_FUNC];
@@ -36,6 +35,7 @@ typedef struct {
   char *command[MAX_PLAYER];
   size_t command_len[MAX_PLAYER];
 } CommandFrame_t;
+
 typedef struct {
   uint32_t turn_nearest;
   uint32_t turn_farthest;
@@ -101,23 +101,8 @@ game_players(RecordRW_t recording[static MAX_PLAYER])
 typedef void (*GameInputFn)(RecordRW_t game_record[static MAX_PLAYER]);
 
 void
-player_gi(RecordRW_t game_record[static MAX_PLAYER])
+noop(RecordRW_t game_record[static MAX_PLAYER])
 {
-  if (!record_peek(input_rw->rec, &input_rw->read))
-    record_append(input_rw->rec, 0, 0, &input_rw->write);
-}
-
-void
-input_to_network(size_t len, char *input)
-{
-  if (input[len] != 0)
-    CRASH();
-
-  ++len;
-  ++writes;
-
-  ssize_t written = network_write(len, input);
-  buffering = buffering | (written != len);
 }
 
 void
@@ -125,10 +110,13 @@ multiplayer_gi(RecordRW_t game_record[static MAX_PLAYER])
 {
   int status = connection_sync(game_record);
 
-  while (loop_write_frame() > input_rw->write.command_count) {
-    if (!record_playback(input_rw->rec, input_to_network, &input_rw->read)) {
-      record_append(input_rw->rec, 0, 0, &input_rw->write);
-    }
+  const int target = loop_write_frame();
+  while (target > input_rw->read.command_count) {
+    size_t cmd_len;
+    const char *cmd = record_read(input_rw->rec, &input_rw->read, &cmd_len);
+    ++cmd_len;
+    ssize_t written = network_write(cmd_len, cmd);
+    buffering = buffering | (written != cmd_len);
   }
 
   switch (status) {
@@ -155,11 +143,11 @@ void
 prompt(int player_count)
 {
   dlfn_print_symbols();
-  printf("Simulation will run until frame %d.\n", simulationGoal);
+  printf("Simulation will run until frame %d.\n", simulation_goal);
   printf("Player Count: %d\n", player_count);
-  puts(
-    "(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (p)rint (h)ash (o)bject "
-    "(r)eload>");
+  puts("(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (p)rint (h)ash "
+       "(o)bject "
+       "(r)eload>");
 }
 
 size_t
@@ -256,13 +244,13 @@ execute_simulation(size_t len, char *input)
   char *token[TOKEN_COUNT] = { [1] = input };
   int tc = tokenize(len, input, TOKEN_COUNT, token);
 
-  simulationGoal = simulationMax;
+  simulation_goal = SIMULATION_MAX;
 
   if (tc == 1)
     return;
 
   uint64_t val = strtol(token[1], 0, 0);
-  simulationGoal = val;
+  simulation_goal = val;
 }
 
 // apply <fn> <p1> <p2> <p3> <...>
@@ -397,11 +385,11 @@ input_callback(size_t len, char *input)
   // These events are not recorded
   switch (input[0]) {
   case 'r':
-    simulationGoal = 0;
+    simulation_goal = 0;
     loop_halt();
     return;
   case 'q':
-    simulationGoal = 0;
+    simulation_goal = 0;
     exiting = true;
     loop_halt();
     return;
@@ -445,7 +433,7 @@ notify_callback(int idx, const struct inotify_event *event)
   if (!strstr(dlpath, event->name))
     return;
 
-  simulationGoal = 0;
+  simulation_goal = 0;
   loop_halt();
 }
 
@@ -472,7 +460,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
   notify_init(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
   dlfn_init(dlpath);
   dlfn_open();
-  simulationGoal = 0;
+  simulation_goal = 0;
   input_init();
   prompt(player_count);
   while (loop_run()) {
@@ -480,6 +468,11 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
 
     notify_poll(notify_callback);
     input_poll(input_callback);
+
+    const int target = loop_write_frame();
+    while (target > input_rw->write.command_count) {
+      record_append(input_rw->rec, 0, 0, &input_rw->write);
+    }
 
     gifn(game_record);
 
@@ -497,8 +490,8 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
     stats_sample_add(&net_perf,
                      to_double(loop_input_queue() - preview.turn_nearest));
     /*printf("(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-           stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
-           100.0 * stats_rs_dev(&net_perf));*/
+           stats_min(&net_perf), stats_max(&net_perf),
+       stats_mean(&net_perf), 100.0 * stats_rs_dev(&net_perf));*/
 
     if (!loop_fast_forward(preview.turn_farthest)) {
       if (preview.turn_nearest > 1) {
@@ -514,7 +507,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
       game_action(frame.command_len[i], frame.command[i]);
     }
 
-    if (simulationGoal <= loop_frame()) {
+    if (simulation_goal <= loop_frame()) {
       loop_pause();
       continue;
     }
@@ -570,8 +563,9 @@ main(int argc, char **argv)
       return 1;
     }
   } else {
-    gi_interface = player_gi;
+    gi_interface = noop;
     input_rw = grec;
+    input_queue = 0;
   }
   input_rw->rec = record_alloc();
 
