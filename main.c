@@ -487,6 +487,8 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
     build_command_preview(player_count, game_record, &preview);
     if (!preview.turn_nearest) {
       printf("+");
+      printf("[ %d farthest ] [ %d nearest ] \n", preview.turn_farthest,
+             preview.turn_nearest);
       fflush(stdout);
       input_queue = MIN(input_queue + 1, input_queue_max);
       loop_stall();
@@ -497,9 +499,6 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
     /*printf("(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
            stats_min(&net_perf), stats_max(&net_perf), stats_mean(&net_perf),
            100.0 * stats_rs_dev(&net_perf));*/
-
-    printf("[ %d farthest ] [ %d nearest ] \n", preview.turn_farthest,
-           preview.turn_nearest);
 
     if (!loop_fast_forward(preview.turn_farthest)) {
       if (preview.turn_nearest > 1) {
@@ -545,7 +544,6 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER], GameInputFn gifn)
 
     loop_sync();
   }
-  connection_print_stats();
   puts("--simulation performance");
   print_runtime_perf(dlfnUsedSymbols, perfStats);
   loop_print_status();
@@ -589,6 +587,8 @@ main(int argc, char **argv)
   for (int i = 0; i < MAX_PLAYER; ++i) {
     record_free(grec[i].rec);
   }
+
+  connection_print_stats();
 
   return 0;
 }
