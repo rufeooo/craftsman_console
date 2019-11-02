@@ -5,17 +5,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct Record_s Record_t;
 typedef struct {
   uint32_t byte_count;
   uint32_t command_count;
 } RecordOffset_t;
+typedef struct {
+  Record_t* rec;
+  RecordOffset_t read;
+  RecordOffset_t write;
+} RecordRW_t;
 
 #ifndef LOCAL
 #define LOCAL __attribute__((visibility("hidden")))
 #endif
 
 typedef void (*RecordEvent_t)(size_t strlen, char *str);
-typedef struct Record_s Record_t;
 
 LOCAL Record_t *record_alloc();
 LOCAL bool record_append(Record_t *rec, size_t len, const char *input,

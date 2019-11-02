@@ -25,10 +25,7 @@ static const char *dlpath = "code/feature.so";
 static const uint32_t simulationMax = UINT32_MAX;
 static uint32_t simulationGoal;
 static bool exiting;
-static Record_t *irec;
-static RecordOffset_t irec_write;
-static RecordOffset_t irec_read;
-static Record_t *gamerec[MAX_PLAYER];
+static RecordRW_t *input_rw;
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
@@ -40,31 +37,31 @@ typedef struct {
   uint32_t turn_command_count;
   char *command[MAX_PLAYER];
   size_t command_len[MAX_PLAYER];
-} CommandQueue_t;
+} CommandFrame_t;
 
 #define FRAME_BUF_LEN 4096
 bool
-sp_frame(size_t player_count, Record_t *recording[static player_count],
-         RecordOffset_t read[static player_count],
-         RecordOffset_t write[static player_count], CommandQueue_t *out_state)
+build_frame(size_t player_count, RecordRW_t recording[player_count],
+            CommandFrame_t *out_state)
 {
   static char buffer[FRAME_BUF_LEN];
-  CommandQueue_t ret_state = { .turn_nearest = loop_input_queue_max(),
+  CommandFrame_t ret_state = { .turn_nearest = loop_input_queue_max(),
                                .turn_farthest = 0,
                                .turn_command_count = player_count };
   char *buffer_write = buffer;
   char *buffer_end = buffer + FRAME_BUF_LEN;
   for (int i = 0; i < player_count; ++i) {
-    uint32_t rcmd = read[i].command_count;
-    uint32_t wcmd = write[i].command_count;
+    uint32_t rcmd = recording[i].read.command_count;
+    uint32_t wcmd = recording[i].write.command_count;
 
     ret_state.turn_farthest = MAX(wcmd - rcmd, ret_state.turn_farthest);
     ret_state.turn_nearest = MIN(wcmd - rcmd, ret_state.turn_nearest);
   }
 
   for (int i = 0; i < player_count; ++i) {
-    size_t cmd_len;
-    const char *cmd = record_read(recording[i], &read[i], &cmd_len);
+    size_t cmd_len = 0;
+    const char *cmd =
+      record_read(recording[i].rec, &recording[i].read, &cmd_len);
     if (buffer_write + cmd_len >= buffer_end)
       return false;
     memcpy(buffer_write, cmd, cmd_len);
@@ -80,6 +77,17 @@ sp_frame(size_t player_count, Record_t *recording[static player_count],
   return true;
 }
 
+uint32_t
+game_players(RecordRW_t recording[static MAX_PLAYER])
+{
+  uint32_t count = 0;
+  for (int i = 0; i < MAX_PLAYER; ++i) {
+    count += (recording[i].rec != 0);
+  }
+
+  return count;
+}
+
 size_t
 print_result(const Symbol_t *sym, size_t r)
 {
@@ -89,11 +97,11 @@ print_result(const Symbol_t *sym, size_t r)
 }
 
 void
-prompt()
+prompt(int player_count)
 {
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulationGoal);
-  printf("Player Count: %d.\n", connection_players(gamerec));
+  printf("Player Count: %d\n", player_count);
   puts(
     "(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (p)rint (h)ash (o)bject "
     "(r)eload>");
@@ -347,7 +355,7 @@ input_callback(size_t len, char *input)
     return;
   }
 
-  record_append(irec, len, input, &irec_write);
+  record_append(input_rw->rec, len, input, &input_rw->write);
 }
 
 void
@@ -400,9 +408,9 @@ notify_callback(int idx, const struct inotify_event *event)
 }
 
 void
-game_simulation()
+game_simulation(RecordRW_t game_record[static MAX_PLAYER])
 {
-  const int player_count = 1; // TODO: dynamic
+  const int player_count = game_players(game_record);
   char *watchDirs[] = { "code" };
   size_t result[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
@@ -425,28 +433,27 @@ game_simulation()
   dlfn_open();
   simulationGoal = 0;
   input_init();
-  prompt();
+  prompt(player_count);
   while (loop_run()) {
-    printf("[ %d frame ] [ %d pause ] [ %d stall ] %d input_queue "
-           "loop_write_frame->%d writes %d\n",
-           frame, pauseFrame, stallFrame, input_queue, loop_write_frame(),
-           writes);
+    loop_print_frame();
 
     notify_poll(notify_callback);
     input_poll(input_callback);
 
-    if (!record_peek(irec, &irec_read))
-      record_append(irec, 0, 0, &irec_write);
+    if (!record_peek(input_rw->rec, &input_rw->read))
+      record_append(input_rw->rec, 0, 0, &input_rw->write);
 
-    CommandQueue_t queue;
-    if (!sp_frame(player_count, &irec, &irec_read, &irec_write, &queue))
+    CommandFrame_t frame;
+    if (!build_frame(player_count, game_record, &frame))
       CRASH();
-    for (int i = 0; i < queue.turn_command_count; ++i) {
-      game_action(queue.command_len[i], queue.command[i]);
+    printf("[ %d farthest ] [ %d nearest ] \n", frame.turn_farthest,
+           frame.turn_nearest);
+    for (int i = 0; i < frame.turn_command_count; ++i) {
+      game_action(frame.command_len[i], frame.command[i]);
     }
 
-    if (!loop_fast_forward(queue.turn_farthest)) {
-      if (queue.turn_nearest > 1) {
+    if (!loop_fast_forward(frame.turn_farthest)) {
+      if (frame.turn_nearest > 1) {
         input_queue = MAX((signed) input_queue - 1, 0);
       }
     }
@@ -494,14 +501,25 @@ game_simulation()
 int
 main(int argc, char **argv)
 {
-  irec = record_alloc();
+  RecordRW_t grec[MAX_PLAYER] = { 0 };
+
+  bool multiplayer = argc > 1;
+  printf("Multiplayer state %d\n", multiplayer);
+  if (!multiplayer) {
+    input_rw = grec;
+  }
+  input_rw->rec = record_alloc();
+
   while (!exiting) {
-    game_simulation();
+    game_simulation(grec);
   }
+
+  record_free(input_rw->rec);
+  input_rw->rec = NULL;
   for (int i = 0; i < MAX_PLAYER; ++i) {
-    record_free(gamerec[i]);
+    record_free(grec[i].rec);
+    grec[i].rec = NULL;
   }
-  record_free(irec);
 
   return 0;
 }
