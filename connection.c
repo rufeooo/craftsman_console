@@ -7,13 +7,14 @@
 
 #define MAX_PLAYER 4
 
-enum { CONN_OK, CONN_TERM, CONN_CHANGE, CONN_STALL };
+enum { CONN_OK, CONN_TERM, CONN_CHANGE };
 
 static char connection_receive_buffer[4096];
 static ssize_t used_receive_buffer;
 static uint32_t bytes_received;
 static uint32_t bytes_processed[MAX_PLAYER];
 static uint32_t messages_processed[MAX_PLAYER];
+static bool buffering = false;
 
 static int
 digit_atoi(char c)
@@ -114,24 +115,47 @@ void
 connection_print_stats()
 {
   puts("--net stats");
-  printf("Received_bytes %d  unprocessed %zu\n", bytes_received,
-         used_receive_buffer);
+  printf(
+    "[ Received_bytes %d ]  [ unprocessed %zu ] [write buffering state %d]\n",
+    bytes_received, used_receive_buffer, buffering);
   for (int i = 0; i < MAX_PLAYER; ++i) {
     printf("player %d: %d messages_processed %d bytes\n", i,
            messages_processed[i], bytes_processed[i]);
   }
 }
 
+typedef int (*NetworkSync_t)(uint32_t target_frame, RecordRW_t *input,
+                             RecordRW_t game_record[static MAX_PLAYER]);
+
 int
-connection_sync(RecordRW_t recording[static MAX_PLAYER])
+connection_noop(uint32_t target_frame, RecordRW_t *input,
+                RecordRW_t game_record[static MAX_PLAYER])
+{
+  return CONN_OK;
+}
+
+int
+connection_sync(uint32_t target_frame, RecordRW_t *input,
+                RecordRW_t game_record[static MAX_PLAYER])
+
 {
   if (!connection_io()) {
+    puts("Network failure.");
     return CONN_TERM;
   }
 
-  if (!connection_processing(recording)) {
+  if (!connection_processing(game_record)) {
     return CONN_CHANGE;
+  }
+
+  while (target_frame > input->read.command_count) {
+    size_t cmd_len;
+    const char *cmd = record_read(input->rec, &input->read, &cmd_len);
+    ++cmd_len;
+    ssize_t written = network_write(cmd_len, cmd);
+    buffering = buffering | (written != cmd_len);
   }
 
   return CONN_OK;
 }
+

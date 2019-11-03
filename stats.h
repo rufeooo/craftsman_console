@@ -10,6 +10,7 @@ typedef struct {
 } Stats_t;
 
 void stats_init(Stats_t *accum);
+void stats_init_array(uint32_t n, Stats_t accum[static n]);
 double stats_sample_count(Stats_t *accum);
 double stats_mean(Stats_t *accum);
 double stats_variance(Stats_t *accum);

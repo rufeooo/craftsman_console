@@ -25,7 +25,7 @@ notify_last_error()
 }
 
 bool
-notify_init(uint32_t eventMask, uint32_t argc, char **argv)
+notify_init(uint32_t eventMask, uint32_t argc, const char **argv)
 {
   watchState.fds = calloc(argc, sizeof(struct pollfd));
   if (!watchState.fds) {

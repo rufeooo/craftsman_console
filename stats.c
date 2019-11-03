@@ -5,10 +5,14 @@
 void
 stats_init(Stats_t *accum)
 {
-  accum->min = UINT64_MAX;
-  accum->max = 0;
-  for (int i = 0; i < ARRAY_LENGTH(accum->moments); ++i) {
-    accum->moments[i] = 0.0;
+  *accum = (Stats_t){ .min = UINT64_MAX };
+}
+
+void
+stats_init_array(uint32_t n, Stats_t stats[static n])
+{
+  for (int i = 0; i < n; ++i) {
+    stats_init(&stats[i]);
   }
 }
 
