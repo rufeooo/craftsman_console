@@ -17,8 +17,6 @@
 #include "record.h"
 #include "stats.h"
 
-#define GAME_BUFFER 4096
-
 static bool buffering = false;
 static const char *dlpath = "code/feature.so";
 static uint32_t simulation_goal;
