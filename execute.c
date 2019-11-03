@@ -12,6 +12,7 @@
 
 #define MAX_FUNC 128
 
+size_t result[MAX_SYMBOLS];
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
@@ -35,6 +36,13 @@ size_t
 decrement(size_t *val)
 {
   *val -= 1;
+  return 1;
+}
+
+size_t
+copy(const size_t *src, size_t *dst)
+{
+  *dst = *src;
   return 1;
 }
 
@@ -88,26 +96,39 @@ add_result_func(Functor_t fnctor)
 }
 
 void
-apply_param(const char *param, Param_t *p)
+apply_param(const char *pstr, Param_t *p)
 {
-  uint64_t val = strtol(param, 0, 0);
+  uint64_t val = strtol(pstr, 0, 0);
   if (val) {
-    printf("param %s val %" PRIu64 "\n", param, val);
+    printf("pstr %s val %" PRIu64 "\n", pstr, val);
     p->i = val;
-  } else if (param[0] == '+') {
-    printf("param %s increment\n", param);
+  } else if (pstr[0] == '+') {
+    printf("pstr %s increment\n", pstr);
     Functor_t fnctor = { .call = increment, .param[0].p = &p->i };
     add_apply_func(fnctor);
-  } else if (param[0] == '-') {
-    printf("param %s decrement\n", param);
+  } else if (pstr[0] == '-') {
+    printf("pstr %s decrement\n", pstr);
     Functor_t fnctor = { .call = decrement, .param[0].p = &p->i };
     add_apply_func(fnctor);
-  } else if (param[0] == '<') {
-    printf("param %s left_shift\n", param);
+  } else if (pstr[0] == '<') {
+    printf("pstr %s left_shift\n", pstr);
     Functor_t fnctor = { .call = left_shift, .param[0].p = &p->i };
     add_apply_func(fnctor);
+  } else if (pstr[0] == '@') {
+    const Symbol_t *sym = dlfn_get_symbol(&pstr[1]);
+    if (sym) {
+      uint32_t sym_offset = (sym - dlfnSymbols);
+      Functor_t fnctor = { .call = copy,
+                           .param[0].p = &result[sym_offset],
+                           .param[1].p = &p->i };
+      add_result_func(fnctor);
+      printf("pstr result of %s [offset %u]\n", &pstr[1], sym_offset);
+
+    } else {
+      printf("sym not found %s\n", &pstr[1]);
+    }
   } else { // TODO
-    printf("string param unhandled %s\n", param);
+    printf("parameter unhandled %s\n", pstr);
   }
 }
 
@@ -205,15 +226,6 @@ execute_apply(size_t len, char *input)
     printf("Failure to apply: function not found (%s).\n", token[1]);
     return;
   }
-}
-
-void
-execute_print(size_t len, char *input)
-{
-  Functor_t fnctor = { .call = print_result };
-  add_result_func(fnctor);
-
-  puts("function results will be printed.");
 }
 
 void

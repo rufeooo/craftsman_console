@@ -84,12 +84,12 @@ dlfn_call(const char *name)
   }
 }
 
-Functor_t *
+Symbol_t *
 dlfn_get_symbol(const char *name)
 {
   for (int i = 0; i < dlfnUsedSymbols; ++i) {
     if (strcmp(name, dlfnSymbols[i].name) == 0) {
-      return &dlfnSymbols[i].fnctor;
+      return &dlfnSymbols[i];
     }
   }
 

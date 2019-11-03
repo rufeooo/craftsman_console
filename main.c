@@ -126,9 +126,6 @@ execute_any(size_t len, char *input)
   case 'a':
     execute_apply(len, input);
     return;
-  case 'p':
-    execute_print(len, input);
-    return;
   case 'o':
     execute_object(len, input);
     return;
@@ -144,7 +141,7 @@ prompt(int player_count)
   dlfn_print_symbols();
   printf("Simulation will run until frame %d.\n", simulation_goal);
   printf("Player Count: %d\n", player_count);
-  puts("(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (p)rint (h)ash "
+  puts("(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (h)ash "
        "(o)bject "
        "(r)eload>");
 }
@@ -165,12 +162,12 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER],
                 NetworkSync_t net_sync)
 {
   const int player_count = game_players(game_record);
-  size_t result[MAX_SYMBOLS];
-  double perf[MAX_SYMBOLS];
   Stats_t perfStats[MAX_SYMBOLS];
+  double perf[MAX_SYMBOLS];
 
   stats_init_array(MAX_SYMBOLS, perfStats);
 
+  memset(result, 0, sizeof(result));
   memset(apply_func, 0, sizeof(apply_func));
   used_apply_func = 0;
   memset(result_func, 0, sizeof(result_func));
@@ -185,7 +182,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER],
   input_init();
   prompt(player_count);
   while (loop_run()) {
-    loop_print_frame();
+    // loop_print_frame();
 
     notify_poll(notify_callback);
     input_poll(input_callback);
@@ -244,18 +241,14 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER],
       result[i] = functor_invoke(dlfnSymbols[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
+
+      for (int j = 0; j < used_result_func; ++j) {
+        functor_invoke(result_func[j]);
+      }
     }
 
     for (int i = 0; i < dlfnUsedSymbols; ++i) {
       stats_sample_add(&perfStats[i], perf[i]);
-    }
-
-    for (int j = 0; j < dlfnUsedSymbols; ++j) {
-      for (int i = 0; i < used_result_func; ++i) {
-        result_func[i].param[0].cp = &dlfnSymbols[j];
-        result_func[i].param[1].i = result[j];
-        functor_invoke(result_func[i]);
-      }
     }
 
     loop_sync();
