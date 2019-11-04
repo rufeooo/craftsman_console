@@ -209,13 +209,14 @@ loop_print_status()
   uint64_t elapsedMs = clockElapsed / (CLOCKS_PER_SEC / 1000);
   printf("--%u loop %s--\n", runCount, running ? "Running" : "Terminating");
   loop_print_frame();
-  printf("%" PRIu64 " ms by clock\n", elapsedMs);
 
   uint64_t tscEndEstimate = tscStart + (tscPerMs * elapsedMs);
   uint64_t tscDrift = MIN(tscEndEstimate - tsc, tsc - tscEndEstimate);
   uint64_t tscDriftMs = tscDrift / tscPerMs;
-  printf("%" PRIu64 " tsc %" PRIu64 " tscEnd %" PRIu64 " tscDrift %" PRIu64
-         " tscPerMs %" PRIu64 " ms of drift\n ",
+  printf("[ %" PRIu64 " tsc ] [ %" PRIu64 " tscEnd ] [ %" PRIu64
+         " tscDrift ] [ %" PRIu64 " tscPerMs ] [ %" PRIu64 " ms drift ]\n ",
          tsc, tscEndEstimate, tscDrift, tscPerMs, tscDriftMs);
+
+  printf("%" PRIu64 " ms elapsed by clock\n", elapsedMs);
 }
 
