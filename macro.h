@@ -17,13 +17,15 @@
   do {                          \
     *((volatile char *) 0) = 1; \
   } while (true)
+#define FLAGGED(test_bits, set_bit) (test_bits & set_bit)
+#define UNFLAGGED(test_bits, set_bit) (set_bit ^ (test_bits & set_bit))
 
 #ifndef INLINE
 #define INLINE __attribute__((always_inline)) inline
 #endif
 
 #ifndef LOCAL
-#define LOCAL __attribute__ ((visibility ("hidden"))) 
+#define LOCAL __attribute__((visibility("hidden")))
 #endif
 
 #endif

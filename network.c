@@ -13,49 +13,67 @@
 
 #include <stdio.h>
 
-static struct addrinfo hints;
-static int sfd;
-static char storage[_SS_SIZE];
-static uint32_t usedStorage;
-static bool connected;
-static bool connecting;
-static bool disconnected;
+typedef struct {
+  int sfd;
+  char storage[_SS_SIZE];
+  uint32_t usedStorage;
+  bool connected;
+  bool connecting;
+  bool disconnected;
+} EndPoint_t;
 
 static void
-network_no_nagle()
+network_no_nagle(int fd)
 {
+  if (fd <= STDERR_FILENO)
+    return;
+
   int flag = 1;
-  setsockopt(sfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+  setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
 static void
-network_non_blocking()
+network_non_blocking(int fd)
 {
   int flags = 0;
-  if (sfd <= STDERR_FILENO)
+  if (fd <= STDERR_FILENO)
     return;
 
-  flags = fcntl(sfd, F_GETFL, 0);
+  flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1)
     return;
 
   printf("flags %u\n", flags);
 
-  fcntl(sfd, F_SETFL, flags | O_NONBLOCK);
+  fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
-  flags = fcntl(sfd, F_GETFL, 0);
+  flags = fcntl(fd, F_GETFL, 0);
   printf("new flags %u\n", flags);
 }
 
-bool
-network_configure(const char *host, const char *service_or_port)
+void
+endpoint_init(EndPoint_t *ep)
 {
+  *ep = (EndPoint_t){ 0 };
+}
+
+void
+endpoint_term(EndPoint_t *ep)
+{
+  if (ep->sfd > STDERR_FILENO)
+    close(ep->sfd);
+  ep->sfd = 0;
+}
+
+bool
+network_configure(EndPoint_t *ep, const char *host,
+                  const char *service_or_port)
+{
+  static struct addrinfo hints;
   struct addrinfo *result = NULL;
 
-  if (sfd > STDERR_FILENO)
-    close(sfd);
-  sfd = 0;
-  connecting = connected = disconnected = false;
+  endpoint_term(ep);
+  endpoint_init(ep);
 
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_UNSPEC;
@@ -67,15 +85,16 @@ network_configure(const char *host, const char *service_or_port)
   if (!result)
     return false;
 
-  sfd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-  network_no_nagle();
-  network_non_blocking();
+  ep->sfd =
+    socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+  network_no_nagle(ep->sfd);
+  network_non_blocking(ep->sfd);
 
-  if (sfd == -1)
+  if (ep->sfd == -1)
     return false;
 
-  memcpy(storage, result->ai_addr, result->ai_addrlen);
-  usedStorage = result->ai_addrlen;
+  memcpy(ep->storage, result->ai_addr, result->ai_addrlen);
+  ep->usedStorage = result->ai_addrlen;
 
   freeaddrinfo(result);
 
@@ -89,37 +108,38 @@ network_interrupted()
 }
 
 bool
-network_connect()
+network_connect(EndPoint_t *ep)
 {
-  if (sfd <= STDERR_FILENO)
+  if (ep->sfd <= STDERR_FILENO)
     return false;
 
-  int result = connect(sfd, (struct sockaddr *) storage, usedStorage);
+  int result =
+    connect(ep->sfd, (struct sockaddr *) ep->storage, ep->usedStorage);
   if (result == -1 && !network_interrupted()) {
     return false;
   }
 
-  connecting = true;
+  ep->connecting = true;
 
   return true;
 }
 
 ssize_t
-network_read(ssize_t n, char buffer[n])
+network_read(int fd, ssize_t n, char buffer[n])
 {
-  return read(sfd, buffer, n);
+  return read(fd, buffer, n);
 }
 
 ssize_t
-network_write(ssize_t n, const char buffer[n])
+network_write(int fd, ssize_t n, const char buffer[n])
 {
-  return write(sfd, buffer, n);
+  return write(fd, buffer, n);
 }
 
 int32_t
-network_poll()
+network_poll(EndPoint_t *ep)
 {
-  struct pollfd fds = { .fd = sfd, .events = POLLIN | POLLOUT | POLLERR };
+  struct pollfd fds = { .fd = ep->sfd, .events = POLLIN | POLLOUT | POLLERR };
   int poll_num = poll(&fds, 1, 0);
 
   if (poll_num == -1) {
@@ -130,9 +150,9 @@ network_poll()
   }
 
   if (fds.revents & (POLLIN | POLLOUT))
-    connected = connecting;
+    ep->connected = ep->connecting;
   if (fds.revents & POLLERR)
-    disconnected = true;
+    ep->disconnected = true;
 
   // printf("%d poll_num %d revents\n", poll_num, fds.revents);
 
@@ -140,9 +160,10 @@ network_poll()
 }
 
 bool
-network_ready()
+network_ready(EndPoint_t *ep)
 {
-  network_poll();
+  network_poll(ep);
 
-  return connected && !disconnected;
+  return ep->connected && !ep->disconnected;
 }
+
