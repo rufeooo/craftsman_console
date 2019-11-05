@@ -19,7 +19,6 @@ server_message(uint32_t n, char message[static n + 1])
   written += network_write(server_ep.sfd, sizeof(n), (const char *) &n);
   written += network_write(server_ep.sfd, sizeof(player), player);
   written += network_write(server_ep.sfd, n, message);
-  printf("server written %d\n", written);
 }
 
 static uint32_t
@@ -85,7 +84,6 @@ routine(void *arg)
 
       bytes_received += bytes;
       used_receive_buffer += bytes;
-      printf("process %d bytes\n", used_receive_buffer);
 
       ssize_t processed_bytes =
         server_process(used_receive_buffer, receive_buffer);

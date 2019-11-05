@@ -15,6 +15,7 @@ static uint32_t bytes_received;
 static uint32_t bytes_processed[MAX_PLAYER];
 static uint32_t messages_processed[MAX_PLAYER];
 static bool buffering = false;
+static EndPoint_t connection_ep;
 
 static int
 digit_atoi(char c)
@@ -32,11 +33,12 @@ fixed_atoi(char str[static 3])
 int
 connection_establish()
 {
-  bool configured = network_configure("gamehost.rufe.org", "4000");
-  bool connected = network_connect();
+  bool configured =
+    network_configure(&connection_ep, "gamehost.rufe.org", "4000");
+  bool connected = network_connect(&connection_ep);
 
-  while (!network_ready()) {
-    if (disconnected)
+  while (!network_ready(&connection_ep)) {
+    if (connection_ep.disconnected)
       return 0;
 
     puts("Waiting for connection");
@@ -49,10 +51,10 @@ connection_establish()
 bool
 connection_io()
 {
-  if (disconnected)
+  if (connection_ep.disconnected)
     return false;
 
-  int32_t events = network_poll();
+  int32_t events = network_poll(&connection_ep);
   if ((events & POLLOUT) == 0) {
     puts("network write unavailable\n");
     return false;
@@ -60,7 +62,8 @@ connection_io()
 
   if (events & POLLIN) {
     ssize_t bytes =
-      network_read(sizeof(connection_receive_buffer) - used_receive_buffer,
+      network_read(connection_ep.sfd,
+                   sizeof(connection_receive_buffer) - used_receive_buffer,
                    connection_receive_buffer + used_receive_buffer);
     bytes_received += bytes;
     if (bytes == -1) {
@@ -152,7 +155,7 @@ connection_sync(uint32_t target_frame, RecordRW_t *input,
     size_t cmd_len;
     const char *cmd = record_read(input->rec, &input->read, &cmd_len);
     ++cmd_len;
-    ssize_t written = network_write(cmd_len, cmd);
+    ssize_t written = network_write(connection_ep.sfd, cmd_len, cmd);
     buffering = buffering | (written != cmd_len);
   }
 
