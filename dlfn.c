@@ -9,7 +9,7 @@
 #include "dlfn.h"
 #include "macro.h"
 
-static const int MAX_PATH = 128;
+#define MAX_PATH 128
 static char dlname[MAX_PATH];
 static void *dlhandle;
 

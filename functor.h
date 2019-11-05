@@ -11,7 +11,7 @@ typedef union {
 } Param_t;
 
 typedef size_t (*FuncPointer)();
-static const int PARAM_COUNT = 3;
+#define PARAM_COUNT 3
 
 typedef struct {
   FuncPointer call;

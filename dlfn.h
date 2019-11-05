@@ -17,7 +17,7 @@ typedef struct {
   size_t bytes;
 } Object_t;
 
-static const int MAX_SYMBOLS = 32;
+#define MAX_SYMBOLS 32
 extern Symbol_t dlfnSymbols[MAX_SYMBOLS];
 extern int dlfnUsedSymbols;
 extern Object_t dlfnObjects[MAX_SYMBOLS];

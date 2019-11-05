@@ -183,7 +183,7 @@ uint32_t
 execute_simulation(size_t len, char *input)
 {
   const unsigned TOKEN_COUNT = 2;
-  char *token[TOKEN_COUNT] = { [1] = input };
+  char *token[TOKEN_COUNT];
   int tc = tokenize(len, input, TOKEN_COUNT, token);
 
   if (tc == 1)
