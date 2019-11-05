@@ -12,7 +12,8 @@ game_tick()
 }
 
 void
-update()
+print_tick(size_t p)
 {
-  printf("tick %zu\n", tick);
+  if (p)
+    printf("tick %zu\n", tick);
 }
