@@ -10,9 +10,16 @@ static pthread_t thread;
 static EndPoint_t server_ep;
 
 static void
-server_message(uint32_t n, char message[n])
+server_message(uint32_t n, char message[static n + 1])
 {
-  puts(message);
+  const char player[] = "000";
+
+  ++n; // nullterm
+  int written = 0;
+  written += network_write(server_ep.sfd, sizeof(n), (const char *) &n);
+  written += network_write(server_ep.sfd, sizeof(player), player);
+  written += network_write(server_ep.sfd, n, message);
+  printf("server written %d\n", written);
 }
 
 static uint32_t
@@ -36,13 +43,13 @@ errno_would_block()
 }
 
 static bool
-serve_halt(ssize_t bytes, bool sig_hup)
+server_halt(ssize_t bytes, bool pollhup)
 {
   switch (bytes) {
   case -1:
     return !errno_would_block();
   case 0:
-    return sig_hup;
+    return pollhup;
   }
 
   return false;
@@ -70,7 +77,7 @@ routine(void *arg)
                      receive_buffer + used_receive_buffer);
 
       // Hangup after all bytes are drained
-      if (serve_halt(bytes, FLAGGED(events, POLLHUP))) {
+      if (server_halt(bytes, FLAGGED(events, POLLHUP))) {
         printf("errno %d\n", errno);
         puts("network_server drain: all bytes read");
         break;
@@ -97,17 +104,15 @@ routine(void *arg)
 }
 
 void
-network_serve(int server_fd[static 1])
+server_init(int server_fd[static 1])
 {
-  endpoint_init(&server_ep);
-  server_ep.sfd = server_fd[0];
-
+  endpoint_from_fd(server_fd[0], &server_ep);
   pthread_attr_init(&attr);
   pthread_create(&thread, &attr, routine, &server_ep);
 }
 
 void
-network_serve_wait_for_exit()
+server_term()
 {
   void *thread_ret;
   pthread_join(thread, &thread_ret);

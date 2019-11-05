@@ -58,6 +58,12 @@ endpoint_init(EndPoint_t *ep)
 }
 
 void
+endpoint_from_fd(int fd, EndPoint_t *ep)
+{
+  *ep = (EndPoint_t){ .sfd = fd };
+}
+
+void
 endpoint_term(EndPoint_t *ep)
 {
   if (ep->sfd > STDERR_FILENO)
