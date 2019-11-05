@@ -18,10 +18,10 @@ typedef struct {
 } Object_t;
 
 #define MAX_SYMBOLS 32
-extern Symbol_t dlfnSymbols[MAX_SYMBOLS];
-extern int dlfnUsedSymbols;
-extern Object_t dlfnObjects[MAX_SYMBOLS];
-extern int dlfnUsedObjects;
+extern Symbol_t dlfn_symbols[MAX_SYMBOLS];
+extern int dlfn_used_symbols;
+extern Object_t dlfn_objects[MAX_SYMBOLS];
+extern int dlfn_used_objects;
 
 Symbol_t *dlfn_get_symbol(const char *name);
 void *dlfn_get_object(const char *name);

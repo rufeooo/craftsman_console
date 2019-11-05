@@ -18,7 +18,7 @@
 #include "stats.h"
 
 static const char *dlpath = "code/feature.so";
-static const char *watchDirs[] = { "code" };
+static const char *watch_dirs[] = { "code" };
 static uint32_t simulation_goal;
 static bool exiting;
 static RecordRW_t input_rw;
@@ -174,7 +174,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
 
   loop_init(10);
   loop_print_status();
-  notify_init(IN_CLOSE_WRITE, ARRAY_LENGTH(watchDirs), watchDirs);
+  notify_init(IN_CLOSE_WRITE, ARRAY_LENGTH(watch_dirs), watch_dirs);
   dlfn_init(dlpath);
   dlfn_open();
   simulation_goal = 0;
@@ -235,9 +235,9 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       functor_invoke(apply_func[i]);
     }
 
-    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    for (int i = 0; i < dlfn_used_symbols; ++i) {
       uint64_t startCall = rdtsc();
-      result[i] = functor_invoke(dlfnSymbols[i].fnctor);
+      result[i] = functor_invoke(dlfn_symbols[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
 
@@ -246,16 +246,16 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       }
     }
 
-    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    for (int i = 0; i < dlfn_used_symbols; ++i) {
       stats_sample_add(&perfStats[i], perf[i]);
     }
 
     loop_sync();
   }
   puts("--simulation performance");
-  for (int i = 0; i < dlfnUsedSymbols; ++i) {
+  for (int i = 0; i < dlfn_used_symbols; ++i) {
     printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-           dlfnSymbols[i].name, stats_min(&perfStats[i]),
+           dlfn_symbols[i].name, stats_min(&perfStats[i]),
            stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
            100.0 * stats_rs_dev(&perfStats[i]));
   }

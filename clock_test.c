@@ -4,7 +4,7 @@
 
 #include "rdtsc.h"
 
-unsigned long long tscPerSec() {
+unsigned long long tsc_per_sec() {
   unsigned long long start = rdtsc();
   unsigned long long stop = 0;
 
@@ -18,7 +18,7 @@ unsigned long long tscPerSec() {
 
 int main() {
   for (;;) {
-    unsigned long long tps = tscPerSec();
+    unsigned long long tps = tsc_per_sec();
 
     printf("%llu elapsed in one millisecond\n", tps);
   }

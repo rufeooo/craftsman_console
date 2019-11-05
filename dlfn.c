@@ -14,32 +14,32 @@ static char dlname[MAX_PATH];
 static void *dlhandle;
 
 // visible
-Symbol_t dlfnSymbols[MAX_SYMBOLS];
-int dlfnUsedSymbols;
-Object_t dlfnObjects[MAX_SYMBOLS];
-int dlfnUsedObjects;
+Symbol_t dlfn_symbols[MAX_SYMBOLS];
+int dlfn_used_symbols;
+Object_t dlfn_objects[MAX_SYMBOLS];
+int dlfn_used_objects;
 
 static void
 reset_symbols()
 {
-  memset(dlfnSymbols, 0, sizeof(dlfnSymbols));
-  dlfnUsedSymbols = 0;
+  memset(dlfn_symbols, 0, sizeof(dlfn_symbols));
+  dlfn_used_symbols = 0;
 }
 
 static void
 add_symbol(Symbol_t sym)
 {
-  if (dlfnUsedSymbols >= MAX_SYMBOLS)
+  if (dlfn_used_symbols >= MAX_SYMBOLS)
     return;
-  dlfnSymbols[dlfnUsedSymbols++] = sym;
+  dlfn_symbols[dlfn_used_symbols++] = sym;
 }
 
 static void
 add_object(Object_t obj)
 {
-  if (dlfnUsedObjects >= MAX_SYMBOLS)
+  if (dlfn_used_objects >= MAX_SYMBOLS)
     return;
-  dlfnObjects[dlfnUsedObjects++] = obj;
+  dlfn_objects[dlfn_used_objects++] = obj;
 }
 
 int
@@ -61,24 +61,24 @@ symbol_order(const void *lhs, const void *rhs)
 void
 sort_symbols()
 {
-  qsort(dlfnSymbols, dlfnUsedSymbols, sizeof(dlfnSymbols[0]), symbol_order);
+  qsort(dlfn_symbols, dlfn_used_symbols, sizeof(dlfn_symbols[0]), symbol_order);
 }
 
 void
 dlfn_print_symbols()
 {
-  for (int i = 0; i < dlfnUsedSymbols; ++i) {
-    printf("%s: %p\n", dlfnSymbols[i].name,
-           (void *) dlfnSymbols[i].fnctor.call);
+  for (int i = 0; i < dlfn_used_symbols; ++i) {
+    printf("%s: %p\n", dlfn_symbols[i].name,
+           (void *) dlfn_symbols[i].fnctor.call);
   }
 }
 
 void
 dlfn_call(const char *name)
 {
-  for (int i = 0; i < dlfnUsedSymbols; ++i) {
-    if (strcmp(name, dlfnSymbols[i].name) == 0) {
-      int r = dlfnSymbols[i].fnctor.call();
+  for (int i = 0; i < dlfn_used_symbols; ++i) {
+    if (strcmp(name, dlfn_symbols[i].name) == 0) {
+      int r = dlfn_symbols[i].fnctor.call();
       printf("%s returns %d\n", name, r);
     }
   }
@@ -87,9 +87,9 @@ dlfn_call(const char *name)
 Symbol_t *
 dlfn_get_symbol(const char *name)
 {
-  for (int i = 0; i < dlfnUsedSymbols; ++i) {
-    if (strcmp(name, dlfnSymbols[i].name) == 0) {
-      return &dlfnSymbols[i];
+  for (int i = 0; i < dlfn_used_symbols; ++i) {
+    if (strcmp(name, dlfn_symbols[i].name) == 0) {
+      return &dlfn_symbols[i];
     }
   }
 
@@ -99,9 +99,9 @@ dlfn_get_symbol(const char *name)
 void *
 dlfn_get_object(const char *name)
 {
-  for (int i = 0; i < dlfnUsedObjects; ++i) {
-    if (strcmp(name, dlfnObjects[i].name) == 0) {
-      return dlfnObjects[i].address;
+  for (int i = 0; i < dlfn_used_objects; ++i) {
+    if (strcmp(name, dlfn_objects[i].name) == 0) {
+      return dlfn_objects[i].address;
     }
   }
 

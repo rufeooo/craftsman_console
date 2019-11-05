@@ -15,55 +15,55 @@ typedef struct {
   int *wd;
 } Watch_t;
 
-static Watch_t watchState;
-static int lastError;
+static Watch_t watch_state;
+static int watch_error;
 
 int
 notify_last_error()
 {
-  return lastError;
+  return watch_error;
 }
 
 bool
 notify_init(uint32_t eventMask, uint32_t argc, const char **argv)
 {
-  watchState.fds = calloc(argc, sizeof(struct pollfd));
-  if (!watchState.fds) {
-    lastError = 2;
+  watch_state.fds = calloc(argc, sizeof(struct pollfd));
+  if (!watch_state.fds) {
+    watch_error = 2;
     return false;
   }
 
-  watchState.wd = calloc(argc, sizeof(int));
-  if (!watchState.wd) {
-    lastError = 3;
+  watch_state.wd = calloc(argc, sizeof(int));
+  if (!watch_state.wd) {
+    watch_error = 3;
     return false;
   }
 
-  watchState.nfds = 0;
+  watch_state.nfds = 0;
   for (uint32_t i = 0; i < argc; ++i) {
-    ++watchState.nfds;
+    ++watch_state.nfds;
     struct pollfd pfd = {
       .fd = inotify_init1(IN_NONBLOCK),
       .events = POLLIN,
     };
-    watchState.fds[i] = pfd;
+    watch_state.fds[i] = pfd;
 
     if (pfd.fd == -1) {
-      lastError = 4;
+      watch_error = 4;
       perror("inotify_init1");
       return false;
     }
 
-    watchState.wd[i] =
+    watch_state.wd[i] =
       inotify_add_watch(pfd.fd, argv[i], eventMask);
-    if (watchState.wd[i] == -1) {
-      lastError = 5;
+    if (watch_state.wd[i] == -1) {
+      watch_error = 5;
       perror("inotify_add_watch");
       return false;
     }
   }
 
-  lastError = 0;
+  watch_error = 0;
 
   return true;
 }
@@ -76,28 +76,28 @@ notify_poll(NotifyEvent_t handler)
   const char *event;
   const char *eventEnd;
 
-  int poll_num = poll(watchState.fds, watchState.nfds, 0);
+  int poll_num = poll(watch_state.fds, watch_state.nfds, 0);
   // printf("poll %d\n", poll_num);
 
   if (poll_num == -1) {
     if (errno == EINTR)
       return true;
-    lastError = 6;
+    watch_error = 6;
     perror("poll");
     return false;
   }
 
-  for (int i = 0; i < watchState.nfds; ++i) {
-    if (0 == (watchState.fds[i].revents & POLLIN)) {
+  for (int i = 0; i < watch_state.nfds; ++i) {
+    if (0 == (watch_state.fds[i].revents & POLLIN)) {
       continue;
     }
 
-    watchState.fds[i].revents = 0;
+    watch_state.fds[i].revents = 0;
 
-    ssize_t len = read(watchState.fds[i].fd, buf, sizeof buf);
+    ssize_t len = read(watch_state.fds[i].fd, buf, sizeof buf);
     if (len == -1 && errno != EAGAIN) {
       perror("read");
-      lastError = 7;
+      watch_error = 7;
       return false;
     }
 
@@ -111,7 +111,7 @@ notify_poll(NotifyEvent_t handler)
     }
   }
 
-  lastError = 0;
+  watch_error = 0;
 
   return true;
 }
@@ -119,11 +119,11 @@ notify_poll(NotifyEvent_t handler)
 void
 notify_shutdown()
 {
-  for (int i = 0; i < watchState.nfds; ++i) {
-    close(watchState.fds[i].fd);
+  for (int i = 0; i < watch_state.nfds; ++i) {
+    close(watch_state.fds[i].fd);
   }
-  free(watchState.fds);
-  free(watchState.wd);
-  memset(&watchState, 0, sizeof(watchState));
+  free(watch_state.fds);
+  free(watch_state.wd);
+  memset(&watch_state, 0, sizeof(watch_state));
 }
 

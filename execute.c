@@ -117,7 +117,7 @@ apply_param(const char *pstr, Param_t *p)
   } else if (pstr[0] == '@') {
     const Symbol_t *sym = dlfn_get_symbol(&pstr[1]);
     if (sym) {
-      uint32_t sym_offset = (sym - dlfnSymbols);
+      uint32_t sym_offset = (sym - dlfn_symbols);
       Functor_t fnctor = { .call = copy,
                            .param[0].p = &result[sym_offset],
                            .param[1].p = &p->i };
@@ -146,11 +146,11 @@ execute_benchmark()
       stats_init(&perfStats[i]);
     }
 
-    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    for (int i = 0; i < dlfn_used_symbols; ++i) {
       double sum = 0;
       for (int j = 0; j < calls; ++j) {
         uint64_t startCall = rdtsc();
-        functor_invoke(dlfnSymbols[i].fnctor);
+        functor_invoke(dlfn_symbols[i].fnctor);
         uint64_t endCall = rdtsc();
         double duration = to_double(endCall - startCall);
         stats_sample_add(&perfStats[i], duration);
@@ -160,9 +160,9 @@ execute_benchmark()
     }
 
     printf("--per 10e%d\n", h);
-    for (int i = 0; i < dlfnUsedSymbols; ++i) {
+    for (int i = 0; i < dlfn_used_symbols; ++i) {
       printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-             dlfnSymbols[i].name, stats_min(&perfStats[i]),
+             dlfn_symbols[i].name, stats_min(&perfStats[i]),
              stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
              100.0 * stats_rs_dev(&perfStats[i]));
     }
@@ -207,10 +207,10 @@ execute_apply(size_t len, char *input)
   }
 
   int matched = 0;
-  for (int fi = 0; fi < dlfnUsedSymbols; ++fi) {
-    const char *filter = token[1][0] == '*' ? dlfnSymbols[fi].name : token[1];
+  for (int fi = 0; fi < dlfn_used_symbols; ++fi) {
+    const char *filter = token[1][0] == '*' ? dlfn_symbols[fi].name : token[1];
 
-    if (strcmp(filter, dlfnSymbols[fi].name))
+    if (strcmp(filter, dlfn_symbols[fi].name))
       continue;
 
     ++matched;
@@ -218,7 +218,7 @@ execute_apply(size_t len, char *input)
       int ti = 2 + pi;
       if (ti >= tc)
         break;
-      apply_param(token[ti], &dlfnSymbols[fi].fnctor.param[pi]);
+      apply_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
     }
   }
 
@@ -252,9 +252,9 @@ void
 execute_hash(size_t len, char *input)
 {
   uint64_t hash_seed = 5381;
-  for (int i = 0; i < dlfnUsedObjects; ++i) {
+  for (int i = 0; i < dlfn_used_objects; ++i) {
     hash_seed =
-      memhash_cont(hash_seed, dlfnObjects[i].address, dlfnObjects[i].bytes);
+      memhash_cont(hash_seed, dlfn_objects[i].address, dlfn_objects[i].bytes);
   }
   printf("Hashval %lu\n", hash_seed);
 }

@@ -26,7 +26,7 @@ tsc_order_double(const void *lhs, const void *rhs)
 }
 
 static uint64_t
-tsc_per_us()
+calc_tsc_per_us()
 {
   const int DELTA_COUNT = 15;
   uint64_t tscDelta[DELTA_COUNT + 1] = { rdtsc() };
@@ -55,18 +55,18 @@ tsc_per_us()
 }
 
 // Memory layout
-static clock_t clockStart;
-static uint64_t tscStart;
-static uint64_t tscPerMs;
-static uint64_t *tscPerFrame;
-static uint64_t tscPerFastFrame;
-static uint64_t tscPerStableFrame;
+static clock_t clock_start;
+static uint64_t tsc_start;
+static uint64_t tsc_per_ms;
+static uint64_t *tsc_per_frame;
+static uint64_t tsc_per_fast_frame;
+static uint64_t tsc_per_stable_frame;
 static uint64_t tsc;
 static uint32_t frame;
-static uint32_t pauseFrame;
-static uint32_t stallFrame;
+static uint32_t pause_frame;
+static uint32_t stall_frame;
 static bool running;
-static uint32_t runCount;
+static uint32_t run_count;
 static uint32_t input_queue;
 static uint32_t input_queue_max;
 
@@ -74,18 +74,18 @@ static uint32_t input_queue_max;
 void
 loop_init(uint8_t framerate)
 {
-  if (!tscPerMs) {
-    tscPerMs = tsc_per_us() * 1000;
-    tscPerFastFrame = 100 / framerate * tscPerMs;
-    tscPerStableFrame = 1000 / framerate * tscPerMs;
-    tscPerFrame = &tscPerStableFrame;
-    clockStart = clock();
-    tscStart = rdtsc();
+  if (!tsc_per_ms) {
+    tsc_per_ms = calc_tsc_per_us() * 1000;
+    tsc_per_fast_frame = 100 / framerate * tsc_per_ms;
+    tsc_per_stable_frame = 1000 / framerate * tsc_per_ms;
+    tsc_per_frame = &tsc_per_stable_frame;
+    clock_start = clock();
+    tsc_start = rdtsc();
   }
   tsc = rdtsc();
   frame = 0;
-  pauseFrame = 0;
-  stallFrame = 0;
+  pause_frame = 0;
+  stall_frame = 0;
   running = true;
   input_queue = input_queue_max = framerate;
 }
@@ -105,8 +105,8 @@ loop_frame()
 void
 loop_stall()
 {
-  const uint64_t tscPer = *tscPerFrame;
-  ++stallFrame;
+  const uint64_t tscPer = *tsc_per_frame;
+  ++stall_frame;
   for (;;) {
     uint64_t now = rdtsc();
     if (now - tsc >= tscPer) {
@@ -119,8 +119,8 @@ loop_stall()
 void
 loop_pause()
 {
-  const uint64_t tscPer = *tscPerFrame;
-  ++pauseFrame;
+  const uint64_t tscPer = *tsc_per_frame;
+  ++pause_frame;
   for (;;) {
     uint64_t now = rdtsc();
     if (now - tsc >= tscPer) {
@@ -133,7 +133,7 @@ loop_pause()
 void
 loop_sync()
 {
-  const uint64_t tscPer = *tscPerFrame;
+  const uint64_t tscPer = *tsc_per_frame;
   ++frame;
   for (;;) {
     uint64_t now = rdtsc();
@@ -147,7 +147,7 @@ loop_sync()
 uint32_t
 loop_input_frame()
 {
-  return frame + pauseFrame;
+  return frame + pause_frame;
 }
 
 uint32_t
@@ -165,14 +165,14 @@ loop_input_queue_max()
 uint32_t
 loop_write_frame()
 {
-  return frame + pauseFrame + input_queue;
+  return frame + pause_frame + input_queue;
 }
 
 bool
 loop_fast_forward(uint32_t max_queued_commands)
 {
   bool fast_forward = max_queued_commands > input_queue_max;
-  tscPerFrame = fast_forward ? &tscPerFastFrame : &tscPerStableFrame;
+  tsc_per_frame = fast_forward ? &tsc_per_fast_frame : &tsc_per_stable_frame;
   return fast_forward;
 }
 
@@ -185,14 +185,14 @@ loop_halt()
 void
 loop_shutdown()
 {
-  ++runCount;
+  ++run_count;
 }
 
 void
 loop_print_frame()
 {
-  printf("[ %d frame ] [ %d pause ] [ %d stall ] \n", frame, pauseFrame,
-         stallFrame);
+  printf("[ %d frame ] [ %d pause ] [ %d stall ] \n", frame, pause_frame,
+         stall_frame);
 }
 
 void
@@ -205,17 +205,17 @@ loop_print_input()
 void
 loop_print_status()
 {
-  clock_t clockElapsed = clock() - clockStart;
+  clock_t clockElapsed = clock() - clock_start;
   uint64_t elapsedMs = clockElapsed / (CLOCKS_PER_SEC / 1000);
-  printf("--%u loop %s--\n", runCount, running ? "Running" : "Terminating");
+  printf("--%u loop %s--\n", run_count, running ? "Running" : "Terminating");
   loop_print_frame();
 
-  uint64_t tscEndEstimate = tscStart + (tscPerMs * elapsedMs);
+  uint64_t tscEndEstimate = tsc_start + (tsc_per_ms * elapsedMs);
   uint64_t tscDrift = MIN(tscEndEstimate - tsc, tsc - tscEndEstimate);
-  uint64_t tscDriftMs = tscDrift / tscPerMs;
+  uint64_t tscDriftMs = tscDrift / tsc_per_ms;
   printf("[ %" PRIu64 " tsc ] [ %" PRIu64 " tscEnd ] [ %" PRIu64
-         " tscDrift ] [ %" PRIu64 " tscPerMs ] [ %" PRIu64 " ms drift ]\n ",
-         tsc, tscEndEstimate, tscDrift, tscPerMs, tscDriftMs);
+         " tscDrift ] [ %" PRIu64 " tsc_per_ms ] [ %" PRIu64 " ms drift ]\n ",
+         tsc, tscEndEstimate, tscDrift, tsc_per_ms, tscDriftMs);
 
   printf("%" PRIu64 " ms elapsed by clock\n", elapsedMs);
 }
