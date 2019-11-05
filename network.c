@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -13,14 +14,7 @@
 
 #include <stdio.h>
 
-typedef struct {
-  int sfd;
-  char storage[_SS_SIZE];
-  uint32_t usedStorage;
-  bool connected;
-  bool connecting;
-  bool disconnected;
-} EndPoint_t;
+#include "network.h"
 
 static void
 network_no_nagle(int fd)
@@ -54,6 +48,8 @@ network_non_blocking(int fd)
 void
 endpoint_init(EndPoint_t *ep)
 {
+  static_assert(_SS_SIZE == SS_STORAGE,
+                "EndPoint_t: System _SS_SIZE != SS_STORAGE");
   *ep = (EndPoint_t){ 0 };
 }
 
@@ -78,7 +74,6 @@ network_configure(EndPoint_t *ep, const char *host,
   static struct addrinfo hints;
   struct addrinfo *result = NULL;
 
-  endpoint_term(ep);
   endpoint_init(ep);
 
   memset(&hints, 0, sizeof(struct addrinfo));
@@ -100,7 +95,7 @@ network_configure(EndPoint_t *ep, const char *host,
     return false;
 
   memcpy(ep->storage, result->ai_addr, result->ai_addrlen);
-  ep->usedStorage = result->ai_addrlen;
+  ep->used_storage = result->ai_addrlen;
 
   freeaddrinfo(result);
 
@@ -108,6 +103,23 @@ network_configure(EndPoint_t *ep, const char *host,
 }
 
 bool
+network_socketpair(EndPoint_t *client_ep, EndPoint_t *server_ep)
+{
+  int sv[2];
+  int ret = socketpair(AF_LOCAL, SOCK_STREAM | SOCK_NONBLOCK, 0, sv);
+
+  if (ret) {
+    printf("Failed to form socketpair, errno %d\n", errno);
+    return false;
+  }
+
+  endpoint_from_fd(sv[0], client_ep);
+  endpoint_from_fd(sv[1], server_ep);
+
+  return true;
+}
+
+static bool
 network_interrupted()
 {
   return (errno == EINTR || errno == EINPROGRESS);
@@ -120,7 +132,7 @@ network_connect(EndPoint_t *ep)
     return false;
 
   int result =
-    connect(ep->sfd, (struct sockaddr *) ep->storage, ep->usedStorage);
+    connect(ep->sfd, (struct sockaddr *) ep->storage, ep->used_storage);
   if (result == -1 && !network_interrupted()) {
     return false;
   }
@@ -130,14 +142,14 @@ network_connect(EndPoint_t *ep)
   return true;
 }
 
-ssize_t
-network_read(int fd, ssize_t n, char buffer[n])
+int64_t
+network_read(int fd, int64_t n, char buffer[n])
 {
   return read(fd, buffer, n);
 }
 
-ssize_t
-network_write(int fd, ssize_t n, const char buffer[n])
+int64_t
+network_write(int fd, int64_t n, const char buffer[n])
 {
   return write(fd, buffer, n);
 }

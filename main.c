@@ -21,7 +21,7 @@ static const char *dlpath = "code/feature.so";
 static const char *watchDirs[] = { "code" };
 static uint32_t simulation_goal;
 static bool exiting;
-static RecordRW_t *input_rw;
+static RecordRW_t input_rw;
 
 typedef struct {
   uint32_t turn_command_count;
@@ -110,7 +110,7 @@ input_callback(size_t len, char *input)
     return;
   }
 
-  record_append(input_rw->rec, len, input, &input_rw->write);
+  record_append(input_rw.rec, len, input, &input_rw.write);
 }
 
 void
@@ -158,8 +158,7 @@ notify_callback(int idx, const struct inotify_event *event)
 }
 
 void
-game_simulation(RecordRW_t game_record[static MAX_PLAYER],
-                NetworkSync_t net_sync)
+game_simulation(RecordRW_t game_record[static MAX_PLAYER])
 {
   const int player_count = game_players(game_record);
   Stats_t perfStats[MAX_SYMBOLS];
@@ -188,11 +187,11 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER],
     input_poll(input_callback);
 
     const int target = loop_write_frame();
-    while (target > input_rw->write.command_count) {
-      record_append(input_rw->rec, 0, 0, &input_rw->write);
+    while (target > input_rw.write.command_count) {
+      record_append(input_rw.rec, 0, 0, &input_rw.write);
     }
 
-    int net_status = net_sync(target, input_rw, game_record);
+    int net_status = connection_sync(target, &input_rw, game_record);
     switch (net_status) {
     case CONN_TERM:
       loop_halt();
@@ -272,39 +271,35 @@ int
 main(int argc, char **argv)
 {
   RecordRW_t game_record[MAX_PLAYER] = { 0 };
-  RecordRW_t net_input = { 0 };
-  NetworkSync_t net_sync = { connection_noop };
+  const char *host = { 0 };
 
   bool multiplayer = argc > 1;
   printf("Multiplayer state %d\n", multiplayer);
   if (multiplayer) {
-    net_sync = connection_sync;
-    input_rw = &net_input;
-    if (!connection_establish()) {
-      puts("Failed to connect");
-      return 1;
-    }
-  } else {
-    input_rw = game_record;
-    input_queue = 0;
+    host = "gamehost.rufe.org";
   }
-  input_rw->rec = record_alloc();
+  if (!connection_init(host)) {
+    return 1;
+  }
+  input_rw.rec = record_alloc();
 
   while (!exiting) {
-    game_simulation(game_record, net_sync);
+    game_simulation(game_record);
     for (int i = 0; i < MAX_PLAYER; ++i) {
       game_record[i].read = (RecordOffset_t){ 0 };
     }
   }
 
-  record_free(input_rw->rec);
-  input_rw->rec = NULL;
+  record_free(input_rw.rec);
+  input_rw.rec = NULL;
   for (int i = 0; i < MAX_PLAYER; ++i) {
     record_free(game_record[i].rec);
   }
 
-  if (multiplayer)
+  connection_term();
+  if (multiplayer) {
     connection_print_stats();
+  }
 
   return 0;
 }

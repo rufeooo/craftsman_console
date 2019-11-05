@@ -1,5 +1,6 @@
 #include "input.c"
 #include "network_server.c"
+#include "network.c"
 
 static bool exiting;
 static EndPoint_t client_ep;
@@ -21,15 +22,13 @@ input_event(size_t strlen, char *str)
 int
 main(int argc, char **argv)
 {
+  EndPoint_t server_ep;
+
   input_init();
-  int sv[2];
-  int ret = socketpair(AF_LOCAL, SOCK_STREAM | SOCK_NONBLOCK, 0, sv);
+  if (!network_socketpair(&client_ep, &server_ep))
+    return 1;
 
-  if (ret)
-    return errno;
-
-  server_init(&sv[1]);
-  endpoint_from_fd(sv[0], &client_ep);
+  server_init(&server_ep);
   while (!exiting) {
     input_poll(input_event);
     int revents = network_poll(&client_ep);
@@ -67,10 +66,11 @@ main(int argc, char **argv)
       used_receive_buffer = remaining_buffer;
     }
   }
+  puts("client loop term");
 
   input_shutdown();
-  close(sv[0]);
-  close(sv[1]);
+  close(client_ep.sfd);
+  close(server_ep.sfd);
 
   server_term();
 
