@@ -12,7 +12,8 @@
 
 #define MAX_FUNC 128
 
-size_t result[MAX_SYMBOLS];
+static size_t result[MAX_SYMBOLS];
+static uint64_t hash_result[MAX_FUNC];
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
 static Functor_t result_func[MAX_FUNC];
@@ -208,7 +209,8 @@ execute_apply(size_t len, char *input)
 
   int matched = 0;
   for (int fi = 0; fi < dlfn_used_symbols; ++fi) {
-    const char *filter = token[1][0] == '*' ? dlfn_symbols[fi].name : token[1];
+    const char *filter =
+      token[1][0] == '*' ? dlfn_symbols[fi].name : token[1];
 
     if (strcmp(filter, dlfn_symbols[fi].name))
       continue;
@@ -239,23 +241,31 @@ execute_object(size_t len, char *input)
     puts("Usage: object <name>");
     return;
   }
-  void *addr = dlfn_get_object(token[1]);
-  if (!addr) {
+  Object_t *obj = dlfn_get_object(token[1]);
+  if (!obj->address) {
     printf("%s not found.\n", token[1]);
     return;
   }
-  long *vp = addr;
-  printf("%s: %p value %lu\n", token[1], addr, *vp);
+
+  if (obj->bytes == 8) {
+    long *lp = obj->address;
+    printf("%s: %p long %ld\n", token[1], obj->address, *lp);
+  } else if (obj->bytes == 4) {
+    signed *p = obj->address;
+    printf("%s: %p signed %d\n", token[1], obj->address, *p);
+  }
 }
 
 void
 execute_hash(size_t len, char *input)
 {
+  memset(hash_result, 0, sizeof(hash_result));
   uint64_t hash_seed = 5381;
   for (int i = 0; i < dlfn_used_objects; ++i) {
     hash_seed =
       memhash_cont(hash_seed, dlfn_objects[i].address, dlfn_objects[i].bytes);
+    hash_result[i] = hash_seed;
+    printf("Hashval %s: %lu\n", dlfn_objects[i].name, hash_seed);
   }
-  printf("Hashval %lu\n", hash_seed);
 }
 

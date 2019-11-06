@@ -24,9 +24,10 @@ extern Object_t dlfn_objects[MAX_SYMBOLS];
 extern int dlfn_used_objects;
 
 Symbol_t *dlfn_get_symbol(const char *name);
-void *dlfn_get_object(const char *name);
+Object_t *dlfn_get_object(const char *name);
 void dlfn_call(const char *name);
 void dlfn_print_symbols();
+void dlfn_print_objects();
 
 bool dlfn_init(const char *filepath);
 void dlfn_shutdown();

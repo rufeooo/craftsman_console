@@ -35,6 +35,13 @@ add_symbol(Symbol_t sym)
 }
 
 static void
+reset_objects()
+{
+  memset(dlfn_objects, 0, sizeof(dlfn_symbols));
+  dlfn_used_symbols = 0;
+}
+
+static void
 add_object(Object_t obj)
 {
   if (dlfn_used_objects >= MAX_SYMBOLS)
@@ -61,7 +68,29 @@ symbol_order(const void *lhs, const void *rhs)
 void
 sort_symbols()
 {
-  qsort(dlfn_symbols, dlfn_used_symbols, sizeof(dlfn_symbols[0]), symbol_order);
+  qsort(dlfn_symbols, dlfn_used_symbols, ARRAY_MEMBER_SIZE(dlfn_symbols),
+        symbol_order);
+}
+
+int
+object_order(const void *lhs, const void *rhs)
+{
+  const Object_t *lhv = lhs;
+  const Object_t *rhv = rhs;
+
+  if (lhv->address < rhv->address)
+    return -1;
+  else if (lhv->address > rhv->address)
+    return 1;
+  else
+    return 0;
+}
+
+void
+sort_objects()
+{
+  qsort(dlfn_objects, dlfn_used_objects, ARRAY_MEMBER_SIZE(dlfn_objects),
+        object_order);
 }
 
 void
@@ -70,6 +99,15 @@ dlfn_print_symbols()
   for (int i = 0; i < dlfn_used_symbols; ++i) {
     printf("%s: %p\n", dlfn_symbols[i].name,
            (void *) dlfn_symbols[i].fnctor.call);
+  }
+}
+
+void
+dlfn_print_objects()
+{
+  for (int i = 0; i < dlfn_used_objects; ++i) {
+    Object_t *obj = &dlfn_objects[i];
+    printf("[ %zu bytes ] %s: %p\n", obj->bytes, obj->name, obj->address);
   }
 }
 
@@ -96,12 +134,12 @@ dlfn_get_symbol(const char *name)
   return 0;
 }
 
-void *
+Object_t *
 dlfn_get_object(const char *name)
 {
   for (int i = 0; i < dlfn_used_objects; ++i) {
     if (strcmp(name, dlfn_objects[i].name) == 0) {
-      return dlfn_objects[i].address;
+      return &dlfn_objects[i];
     }
   }
 
@@ -135,7 +173,6 @@ parse_symtab(void *addr, void *symtab, void *strtab)
                    .bytes = iter->st_size };
 
     add_object(o);
-    printf("Object %s: %p\n", o.name, o.address);
   }
 }
 
@@ -210,6 +247,7 @@ dlfn_open()
 
   // Functors follow call ordering of the address space
   sort_symbols();
+  sort_objects();
 
   return true;
 }
@@ -221,6 +259,7 @@ dlfn_close()
     return false;
 
   reset_symbols();
+  reset_objects();
   int result = dlclose(dlhandle);
   if (result != 0)
     puts(dlerror());

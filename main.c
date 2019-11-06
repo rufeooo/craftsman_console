@@ -139,6 +139,7 @@ void
 prompt(int player_count)
 {
   dlfn_print_symbols();
+  dlfn_print_objects();
   printf("Simulation will run until frame %d.\n", simulation_goal);
   printf("Player Count: %d\n", player_count);
   puts("(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (h)ash "
@@ -205,7 +206,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
     CommandPreview_t preview;
     command_preview(player_count, game_record, &preview);
     if (!preview.turn_nearest) {
-      printf("[ %d farthest ] [ %d nearest ] \n", preview.turn_farthest,
+      printf("stall [ %d farthest ] [ %d nearest ] \n", preview.turn_farthest,
              preview.turn_nearest);
       input_queue = MIN(input_queue + 1, input_queue_max);
       loop_stall();
