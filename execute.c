@@ -260,7 +260,7 @@ void
 execute_hash(size_t len, char *input)
 {
   memset(hash_result, 0, sizeof(hash_result));
-  uint64_t hash_seed = 5381;
+  uint64_t hash_seed = memhash(0, 0);
   for (int i = 0; i < dlfn_used_objects; ++i) {
     hash_seed =
       memhash_cont(hash_seed, dlfn_objects[i].address, dlfn_objects[i].bytes);
