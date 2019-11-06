@@ -97,7 +97,7 @@ server_routine(void *arg)
       }
     }
 
-    usleep(100 * 1000);
+    usleep(10 * 1000);
   }
 
   printf("network_server exiting %d\n", ep.disconnected);
