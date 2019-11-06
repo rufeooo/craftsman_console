@@ -31,7 +31,7 @@ main(int argc, char **argv)
   server_init(&server_ep);
   while (!exiting) {
     input_poll(input_event);
-    int revents = network_poll(&client_ep);
+    int revents = network_poll(&client_ep, 0);
     if (FLAGGED(revents, POLLIN)) {
       static uint32_t used_receive_buffer;
       static char receive_buffer[4096];

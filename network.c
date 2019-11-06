@@ -26,16 +26,16 @@ network_no_nagle(int fd)
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
-static void
+static bool
 network_non_blocking(int fd)
 {
   int flags = 0;
   if (fd <= STDERR_FILENO)
-    return;
+    return false;
 
   flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1)
-    return;
+    return false;
 
   printf("flags %u\n", flags);
 
@@ -43,6 +43,8 @@ network_non_blocking(int fd)
 
   flags = fcntl(fd, F_GETFL, 0);
   printf("new flags %u\n", flags);
+
+  return true;
 }
 
 void
@@ -106,7 +108,7 @@ bool
 network_socketpair(EndPoint_t *client_ep, EndPoint_t *server_ep)
 {
   int sv[2];
-  int ret = socketpair(AF_LOCAL, SOCK_STREAM | SOCK_NONBLOCK, 0, sv);
+  int ret = socketpair(AF_LOCAL, SOCK_STREAM, 0, sv);
 
   if (ret) {
     printf("Failed to form socketpair, errno %d\n", errno);
@@ -115,6 +117,9 @@ network_socketpair(EndPoint_t *client_ep, EndPoint_t *server_ep)
 
   endpoint_from_fd(sv[0], client_ep);
   endpoint_from_fd(sv[1], server_ep);
+
+  bool client_nnb = network_non_blocking(client_ep->sfd);
+  printf("client socket non_blocking: %d\n", client_nnb);
 
   return true;
 }
@@ -155,10 +160,10 @@ network_write(int fd, int64_t n, const char buffer[n])
 }
 
 int32_t
-network_poll(EndPoint_t *ep)
+network_poll(EndPoint_t *ep, int timeout_ms)
 {
   struct pollfd fds = { .fd = ep->sfd, .events = POLLIN | POLLOUT | POLLERR };
-  int poll_num = poll(&fds, 1, 0);
+  int poll_num = poll(&fds, 1, timeout_ms);
 
   if (poll_num == -1) {
     if (errno == EINTR)
@@ -180,7 +185,7 @@ network_poll(EndPoint_t *ep)
 bool
 network_ready(EndPoint_t *ep)
 {
-  network_poll(ep);
+  network_poll(ep, 0);
 
   return ep->connected && !ep->disconnected;
 }

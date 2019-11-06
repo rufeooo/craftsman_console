@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "macro.h"
 #include "network.h"
@@ -67,7 +66,7 @@ server_routine(void *arg)
   EndPoint_t ep = *(EndPoint_t *) arg;
 
   while (!ep.disconnected) {
-    int32_t events = network_poll(&ep);
+    int32_t events = network_poll(&ep, 10);
     if (UNFLAGGED(events, POLLOUT)) {
       puts("network_server stop: write unavailable");
       break;
@@ -96,8 +95,6 @@ server_routine(void *arg)
         used_receive_buffer -= processed_bytes;
       }
     }
-
-    usleep(10 * 1000);
   }
 
   printf("network_server exiting %d\n", ep.disconnected);

@@ -22,7 +22,7 @@ main(int argc, char **argv)
   }
 
   while (configured && connected) {
-    int32_t events = network_poll(&client_ep);
+    int32_t events = network_poll(&client_ep, 0);
 
     if (FLAGGED(events, POLLIN)) {
       ssize_t bytes =
