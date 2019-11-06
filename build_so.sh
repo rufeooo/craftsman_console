@@ -1,5 +1,5 @@
 #!/bin/bash
-mkdir code
+mkdir -p code
 if [ -z $CC ]; then
   CC=`which clang`
 fi
