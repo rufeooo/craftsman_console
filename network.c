@@ -160,9 +160,10 @@ network_write(int fd, int64_t n, const char buffer[n])
 }
 
 int32_t
-network_poll(EndPoint_t *ep, int timeout_ms)
+network_poll(EndPoint_t *ep, short events, int timeout_ms)
 {
-  struct pollfd fds = { .fd = ep->sfd, .events = POLLIN | POLLOUT | POLLERR };
+  struct pollfd fds = { .fd = ep->sfd,
+                        .events = (POLLIN | POLLOUT | POLLERR) & events };
   int poll_num = poll(&fds, 1, timeout_ms);
 
   if (poll_num == -1) {
@@ -185,7 +186,7 @@ network_poll(EndPoint_t *ep, int timeout_ms)
 bool
 network_ready(EndPoint_t *ep)
 {
-  network_poll(ep, 0);
+  network_poll(ep, POLLOUT | POLLIN | POLLERR, 0);
 
   return ep->connected && !ep->disconnected;
 }

@@ -64,7 +64,7 @@ connection_io()
   if (client_ep.disconnected)
     return false;
 
-  int32_t events = network_poll(&client_ep, 0);
+  int32_t events = network_poll(&client_ep, POLLIN | POLLOUT | POLLERR, 0);
   if ((events & POLLOUT) == 0) {
     puts("network write unavailable\n");
     return false;

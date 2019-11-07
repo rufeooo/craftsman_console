@@ -66,9 +66,10 @@ server_routine(void *arg)
   EndPoint_t ep = *(EndPoint_t *) arg;
 
   while (!ep.disconnected) {
-    int32_t events = network_poll(&ep, 10);
-    if (UNFLAGGED(events, POLLOUT)) {
-      puts("network_server stop: write unavailable");
+    int32_t events = network_poll(&ep, POLLIN | POLLERR, 10);
+
+    if (FLAGGED(events, POLLNVAL)) {
+      puts("network_server stop: socket invalid.");
       break;
     }
 

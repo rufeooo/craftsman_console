@@ -1,6 +1,6 @@
 #include "input.c"
-#include "network_server.c"
 #include "network.c"
+#include "network_server.c"
 
 static bool exiting;
 static EndPoint_t client_ep;
@@ -31,7 +31,7 @@ main(int argc, char **argv)
   server_init(&server_ep);
   while (!exiting) {
     input_poll(input_event);
-    int revents = network_poll(&client_ep, 0);
+    int revents = network_poll(&client_ep, POLLOUT | POLLIN | POLLERR, 0);
     if (FLAGGED(revents, POLLIN)) {
       static uint32_t used_receive_buffer;
       static char receive_buffer[4096];
