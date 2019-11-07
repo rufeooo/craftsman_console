@@ -25,13 +25,13 @@ tsc_order_double(const void *lhs, const void *rhs)
     return 0;
 }
 
+#define TSC_DELTA_COUNT 15
 static uint64_t
 calc_tsc_per_us()
 {
-  const int DELTA_COUNT = 15;
-  uint64_t tscDelta[DELTA_COUNT + 1] = { rdtsc() };
-  clock_t clockDelta[DELTA_COUNT + 1] = { clock() };
-  for (int i = 1; i < DELTA_COUNT + 1; ++i) {
+  uint64_t tscDelta[TSC_DELTA_COUNT + 1] = { rdtsc() };
+  clock_t clockDelta[TSC_DELTA_COUNT + 1] = { clock() };
+  for (int i = 1; i < TSC_DELTA_COUNT + 1; ++i) {
     clock_t now;
     do {
       clockDelta[i] = clock();
@@ -39,19 +39,19 @@ calc_tsc_per_us()
     } while ((clockDelta[i] - clockDelta[i - 1]) * 1000 / CLOCKS_PER_SEC < 1);
   }
 
-  double tscPerSec[DELTA_COUNT + 1];
-  for (int i = 0; i < DELTA_COUNT; ++i) {
+  double tscPerSec[TSC_DELTA_COUNT + 1];
+  for (int i = 0; i < TSC_DELTA_COUNT; ++i) {
     uint64_t clock_delta = (clockDelta[i + 1] - clockDelta[i]);
     uint64_t tsc_delta = tscDelta[i + 1] - tscDelta[i];
     tscPerSec[i] = to_double(CLOCKS_PER_SEC) * to_double(tsc_delta)
                    / to_double(clock_delta);
   }
 
-  qsort(tscPerSec, DELTA_COUNT, ARRAY_MEMBER_SIZE(tscPerSec),
+  qsort(tscPerSec, TSC_DELTA_COUNT, ARRAY_MEMBER_SIZE(tscPerSec),
         tsc_order_double);
 
   const double USEC_PER_SEC = 1000 * 1000;
-  return double_round_uint64(tscPerSec[DELTA_COUNT / 2] / USEC_PER_SEC);
+  return double_round_uint64(tscPerSec[TSC_DELTA_COUNT / 2] / USEC_PER_SEC);
 }
 
 // Memory layout

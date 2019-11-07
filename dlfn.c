@@ -149,6 +149,7 @@ dlfn_get_object(const char *name)
 static void
 parse_symtab(void *addr, void *symtab, void *strtab)
 {
+  const char *read_strtab = strtab;
   ElfW(Sym *) iter = symtab;
   for (; (void *) iter < strtab; ++iter) {
     if (ELF64_ST_TYPE(iter->st_info) != STT_FUNC)
@@ -157,7 +158,7 @@ parse_symtab(void *addr, void *symtab, void *strtab)
       continue;
     if (iter->st_size == 0)
       continue;
-    Symbol_t s = { .name = &strtab[iter->st_name],
+    Symbol_t s = { .name = &read_strtab[iter->st_name],
                    .fnctor = functor_init((void *) (addr + iter->st_value)) };
     add_symbol(s);
   }
@@ -168,7 +169,7 @@ parse_symtab(void *addr, void *symtab, void *strtab)
       continue;
     if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL)
       continue;
-    Object_t o = { .name = &strtab[iter->st_name],
+    Object_t o = { .name = &read_strtab[iter->st_name],
                    .address = addr + iter->st_value,
                    .bytes = iter->st_size };
 
