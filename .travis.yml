@@ -1,0 +1,9 @@
+sudo: false
+language: c
+script:
+    - ./run.sh
+
+os: 
+    - linux
+    - osx
+
