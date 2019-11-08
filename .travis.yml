@@ -3,7 +3,7 @@ language: c
 compiler: clang
 dist: bionic
 script:
-    - ./run.sh
+    - ./cc_build.sh
 
 os: 
     - linux
