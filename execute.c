@@ -7,6 +7,7 @@
 #include "float.h"
 #include "functor.h"
 #include "hash.h"
+#include "macro.h"
 #include "rdtsc.h"
 #include "stats.h"
 
@@ -16,6 +17,7 @@ static size_t result[MAX_SYMBOLS];
 static uint64_t hash_result[MAX_FUNC];
 static Functor_t apply_func[MAX_FUNC];
 static size_t used_apply_func;
+static __uint128_t apply_func_condition;
 static Functor_t result_func[MAX_FUNC];
 static size_t used_result_func;
 
@@ -48,6 +50,19 @@ copy(const size_t *src, size_t *dst)
 }
 
 size_t
+fn_filter(size_t result_index, size_t apply_index)
+{
+  __uint128_t bit = (1 << apply_index);
+  if (result[result_index]) {
+    apply_func_condition |= bit;
+  } else {
+    apply_func_condition &= ~bit;
+  }
+
+  return 1;
+}
+
+size_t
 print_result(const Symbol_t *sym, size_t r)
 {
   printf("0x%zX %s 0x%zX 0x%zX 0x%zX\n", r, sym->name, sym->fnctor.param[0].i,
@@ -74,15 +89,16 @@ tokenize(size_t len, char *input, size_t token_count,
   return tc;
 }
 
-bool
+size_t
 add_apply_func(Functor_t fnctor)
 {
   if (used_apply_func >= MAX_FUNC)
     return false;
 
-  apply_func[used_apply_func] = fnctor;
+  size_t idx = used_apply_func;
+  apply_func[idx] = fnctor;
   ++used_apply_func;
-  return true;
+  return idx;
 }
 
 bool
@@ -97,24 +113,22 @@ add_result_func(Functor_t fnctor)
 }
 
 void
-apply_param(const char *pstr, Param_t *p)
+apply_param(Functor_t *precondition, const char *pstr, Param_t *p)
 {
   uint64_t val = strtol(pstr, 0, 0);
+  long apply_idx = -1;
   if (val) {
     printf("pstr %s val %" PRIu64 "\n", pstr, val);
     p->i = val;
   } else if (pstr[0] == '+') {
-    printf("pstr %s increment\n", pstr);
     Functor_t fnctor = { .call = increment, .param[0].p = &p->i };
-    add_apply_func(fnctor);
+    apply_idx = add_apply_func(fnctor);
   } else if (pstr[0] == '-') {
-    printf("pstr %s decrement\n", pstr);
     Functor_t fnctor = { .call = decrement, .param[0].p = &p->i };
-    add_apply_func(fnctor);
+    apply_idx = add_apply_func(fnctor);
   } else if (pstr[0] == '<') {
-    printf("pstr %s left_shift\n", pstr);
     Functor_t fnctor = { .call = left_shift, .param[0].p = &p->i };
-    add_apply_func(fnctor);
+    apply_idx = add_apply_func(fnctor);
   } else if (pstr[0] == '@') {
     const Symbol_t *sym = dlfn_get_symbol(&pstr[1]);
     if (sym) {
@@ -130,6 +144,42 @@ apply_param(const char *pstr, Param_t *p)
     }
   } else { // TODO
     printf("parameter unhandled %s\n", pstr);
+  }
+
+  if (apply_idx >= 0) {
+    printf("%ld apply index: pstr %s\n", apply_idx, pstr);
+    if (precondition) {
+      precondition->param[1].i = apply_idx;
+      add_result_func(*precondition);
+    }
+  }
+}
+
+void
+execute_init()
+{
+  memset(result, 0, sizeof(result));
+  memset(apply_func, 0, sizeof(apply_func));
+  used_apply_func = 0;
+  apply_func_condition = ~0;
+  memset(result_func, 0, sizeof(result_func));
+  used_result_func = 0;
+}
+
+void
+execute_apply_functions()
+{
+  for (int i = 0; i < used_apply_func; ++i) {
+    if (FLAGGED(apply_func_condition, (1 << i)))
+      functor_invoke(apply_func[i]);
+  }
+}
+
+void
+execute_result_functions()
+{
+  for (int j = 0; j < used_result_func; ++j) {
+    functor_invoke(result_func[j]);
   }
 }
 
@@ -194,35 +244,53 @@ execute_simulation(size_t len, char *input)
   return val;
 }
 
-// apply <fn> <p1> <p2> <p3> <...>
+// apply <?pre> <fn> <p1> <p2> <p3> <...>
 void
 execute_apply(size_t len, char *input)
 {
-  const unsigned TOKEN_COUNT = 6;
+  const unsigned TOKEN_COUNT = 7;
   char *token[TOKEN_COUNT];
   int tc = tokenize(len, input, TOKEN_COUNT, token);
 
   if (tc < 2) {
-    puts("Usage: apply <func> <param1> <param2> <param3>");
+    puts("Usage: apply <?precondition> <func> <param1> <param2> <param3>");
     return;
+  }
+
+  int next_token = 1;
+  Functor_t *precondition = { 0 };
+  if (token[next_token][0] == '?') {
+    const Symbol_t *sym = dlfn_get_symbol(&token[next_token][1]);
+    if (!sym) {
+      puts("precondition not found.");
+      return;
+    }
+
+    uint32_t sym_offset = (sym - dlfn_symbols);
+    static Functor_t fnctor = { .call = fn_filter };
+    fnctor.param[0].i = sym_offset;
+    precondition = &fnctor;
+    ++next_token;
   }
 
   int matched = 0;
   for (int fi = 0; fi < dlfn_used_symbols; ++fi) {
     const char *filter =
-      token[1][0] == '*' ? dlfn_symbols[fi].name : token[1];
+      token[next_token][0] == '*' ? dlfn_symbols[fi].name : token[next_token];
 
     if (strcmp(filter, dlfn_symbols[fi].name))
       continue;
 
     ++matched;
     for (int pi = 0; pi < PARAM_COUNT; ++pi) {
-      int ti = 2 + pi;
+      int ti = next_token + pi + 1;
       if (ti >= tc)
         break;
-      apply_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
+      apply_param(precondition, token[ti],
+                  &dlfn_symbols[fi].fnctor.param[pi]);
     }
   }
+  ++next_token;
 
   if (!matched) {
     printf("Failure to apply: function not found (%s).\n", token[1]);

@@ -80,8 +80,8 @@ server_routine(void *arg)
 
       // Hangup after all bytes are drained
       if (server_halt(bytes, FLAGGED(events, POLLHUP))) {
-        printf("errno %d\n", errno);
         puts("network_server drain: all bytes read");
+        printf("server last errno %d\n", errno);
         break;
       }
 

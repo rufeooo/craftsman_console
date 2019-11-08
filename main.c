@@ -142,9 +142,16 @@ prompt(int player_count)
   dlfn_print_objects();
   printf("Simulation will run until frame %d.\n", simulation_goal);
   printf("Player Count: %d\n", player_count);
-  puts("(q)uit (i)nfo (s)imulation (b)enchmark (a)pply (h)ash "
+  puts(""
+       "(a)pply "
+       "(b)enchmark "
+       "(h)ash "
+       "(i)nfo "
+       "(q)uit "
+       "(r)eload "
        "(o)bject "
-       "(r)eload>");
+       "(s)imulation "
+       ">");
 }
 
 void
@@ -167,11 +174,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
 
   stats_init_array(MAX_SYMBOLS, perfStats);
 
-  memset(result, 0, sizeof(result));
-  memset(apply_func, 0, sizeof(apply_func));
-  used_apply_func = 0;
-  memset(result_func, 0, sizeof(result_func));
-  used_result_func = 0;
+  execute_init();
 
   loop_init(10);
   loop_print_status();
@@ -232,9 +235,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       continue;
     }
 
-    for (int i = 0; i < used_apply_func; ++i) {
-      functor_invoke(apply_func[i]);
-    }
+    execute_apply_functions();
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {
       uint64_t startCall = rdtsc();
@@ -242,9 +243,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
 
-      for (int j = 0; j < used_result_func; ++j) {
-        functor_invoke(result_func[j]);
-      }
+      execute_result_functions();
     }
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {

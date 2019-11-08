@@ -12,7 +12,7 @@ game_tick()
   ++tick;
   other = -1 * tick;
 
-  return tick;
+  return (size_t)((tick % 9) == 0);
 }
 
 size_t
