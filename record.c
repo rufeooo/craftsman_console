@@ -94,7 +94,7 @@ record_peek(const Record_t *rec, const RecordOffset_t *off)
   return &rec->buf[read_offset];
 }
 
-LOCAL const char *
+const char *
 record_read(const Record_t *rec, RecordOffset_t *off, size_t *len)
 {
   uint32_t read_offset = off->byte_count;
@@ -109,6 +109,21 @@ record_read(const Record_t *rec, RecordOffset_t *off, size_t *len)
 
   *len = length;
   return cmd;
+}
+
+bool
+record_read_bytes(const Record_t *rec, size_t len, char buffer[static len],
+                  RecordOffset_t *off)
+{
+  uint32_t read_offset = off->byte_count;
+  if (read_offset + len >= rec->used_bytes)
+    return false;
+
+  memcpy(buffer, &rec->buf[read_offset], len);
+  off->byte_count += len + 1;
+  off->command_count++;
+
+  return true;
 }
 
 void

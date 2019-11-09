@@ -32,6 +32,8 @@ LOCAL bool record_playback(const Record_t *rec, RecordEvent_t handler,
 LOCAL const char *record_peek(const Record_t *rec, const RecordOffset_t *off);
 LOCAL const char *record_read(const Record_t *rec, RecordOffset_t *off,
                               size_t *len);
+LOCAL bool record_read_bytes(const Record_t *rec, size_t len,
+                             char buffer[static len], RecordOffset_t *off);
 LOCAL void record_playback_all(const Record_t *rec, RecordEvent_t handler);
 LOCAL Record_t *record_clone(const Record_t *rec);
 LOCAL void record_reset(Record_t *rec);
