@@ -171,10 +171,12 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
   const int player_count = game_players(game_record);
   Stats_t perfStats[MAX_SYMBOLS];
   double perf[MAX_SYMBOLS];
+  RecordRW_t frame_store = { 0 };
 
   stats_init_array(MAX_SYMBOLS, perfStats);
 
   execute_init();
+  frame_store.rec = record_alloc();
 
   loop_init(10);
   loop_print_status();
@@ -250,6 +252,11 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       stats_sample_add(&perfStats[i], perf[i]);
     }
 
+    for (int i = 0; i < dlfn_used_objects; ++i) {
+      record_append(frame_store.rec, dlfn_objects[i].bytes,
+                    dlfn_objects[i].address, &frame_store.write);
+    }
+
     loop_sync();
   }
   puts("--simulation performance");
@@ -265,6 +272,9 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
   notify_shutdown();
   dlfn_shutdown();
   input_shutdown();
+
+  record_to_disk(frame_store.rec, "frame_store.bin");
+  record_free(frame_store.rec);
 }
 
 int

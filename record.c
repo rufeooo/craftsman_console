@@ -136,8 +136,20 @@ record_playback_all(const Record_t *rec, RecordEvent_t handler)
   }
 }
 
+bool
+record_to_disk(const Record_t *rec, const char *pathname)
+{
+  FILE *fd = fopen(pathname, "w+");
+  if (!fd)
+    return false;
+
+  fwrite(rec->buf, rec->used_bytes, 1, fd);
+  fclose(fd);
+  return true;
+}
+
 size_t
-record_length(Record_t *rec)
+record_length(const Record_t *rec)
 {
   return rec->used_bytes;
 }

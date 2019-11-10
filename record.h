@@ -39,7 +39,8 @@ LOCAL Record_t *record_clone(const Record_t *rec);
 LOCAL void record_reset(Record_t *rec);
 LOCAL void record_free(Record_t *rec);
 
-LOCAL size_t record_length(Record_t *rec);
+LOCAL bool record_to_disk(const Record_t *rec, const char *pathname);
+LOCAL size_t record_length(const Record_t *rec);
 LOCAL int record_compare(const Record_t *lhs, const Record_t *rhs);
 
 LOCAL void record_debug(Record_t *rec);
