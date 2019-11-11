@@ -112,6 +112,27 @@ test_pi(const char *p, size_t i)
   return 2;
 }
 
+size_t
+test_d(double d)
+{
+  printf("%f\n", d);
+  return 1;
+}
+
+size_t
+test_dd(double d, double dd)
+{
+  printf("%f %f\n", d, dd);
+  return 2;
+}
+
+size_t
+test_ddd(double d, double dd, double ddd)
+{
+  printf("%f %f %f\n", d, dd, ddd);
+  return 3;
+}
+
 void
 test_fnctor_i(Functor_t f)
 {
@@ -209,6 +230,24 @@ test_fnctor_mix3()
 }
 
 void
+test_fnctor_d()
+{
+  Functor_t f;
+  f = functor_init(test_d);
+  f.param[0].d = (double) 1.0;
+  functor_invoke(f);
+  f = functor_init(test_dd);
+  f.param[0].d = (double) 2.0;
+  f.param[1].d = (double) 2.23124123;
+  functor_invoke(f);
+  f = functor_init(test_ddd);
+  f.param[0].d = (double) 3.1315926;
+  f.param[1].d = (double) 4.5123;
+  f.param[2].d = (double) 5.8234;
+  functor_invoke(f);
+}
+
+void
 api_call(Functor_t f)
 {
   functor_invoke(f);
@@ -272,6 +311,8 @@ main(int argc, char **argv)
 
   test_fnctor_mix2(functor_init(test_ip), functor_init(test_pi));
   // TODO: test_fnctor_mix3
+
+  test_fnctor_d();
 
   return 0;
 }

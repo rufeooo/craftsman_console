@@ -7,6 +7,7 @@
 typedef union {
   size_t i;
   void *p;
+  double d;
   const void *cp;
 } Param_t;
 

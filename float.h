@@ -5,6 +5,12 @@
 // Prefer determinism over speed
 #pragma STDC FP_CONTRACT OFF
 
+// Composite type: API declarations pass doubles by register
+typedef union {
+  double value;
+  int64_t _pdbr;
+} ApiDouble_t;
+
 #if _d_BigEndian_
 #define _d_EXP 0
 #define _d_MAN 1

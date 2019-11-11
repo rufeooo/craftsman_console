@@ -115,6 +115,13 @@ add_result_func(Functor_t fnctor)
 void
 apply_param(Functor_t *precondition, const char *pstr, Param_t *p)
 {
+  if (strchr(pstr, '.') || strchr(pstr, 'e')) {
+    double dval = strtod(pstr, NULL);
+    p->d = dval;
+    printf("pstr %s dval %f\n", pstr, dval);
+    return;
+  }
+
   uint64_t val = strtol(pstr, 0, 0);
   long apply_idx = -1;
   if (val) {
@@ -317,7 +324,8 @@ execute_object(size_t len, char *input)
 
   if (obj->bytes == 8) {
     long *lp = obj->address;
-    printf("%s: %p long %ld\n", token[1], obj->address, *lp);
+    double *dp = obj->address;
+    printf("%s: %p long %ld double %f\n", token[1], obj->address, *lp, *dp);
   } else if (obj->bytes == 4) {
     signed *p = obj->address;
     printf("%s: %p signed %d\n", token[1], obj->address, *p);
