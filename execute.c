@@ -29,6 +29,13 @@ increment(size_t *val)
 }
 
 size_t
+increment_fp(double *val)
+{
+  *val += 1.0;
+  return 1;
+}
+
+size_t
 left_shift(size_t *val)
 {
   *val <<= 1;
@@ -39,6 +46,13 @@ size_t
 decrement(size_t *val)
 {
   *val -= 1;
+  return 1;
+}
+
+size_t
+decrement_fp(double *val)
+{
+  *val -= 1.0;
   return 1;
 }
 
@@ -115,15 +129,25 @@ add_result_func(Functor_t fnctor)
 void
 apply_param(Functor_t *precondition, const char *pstr, Param_t *p)
 {
+  long apply_idx = -1;
+
   if (strchr(pstr, '.') || strchr(pstr, 'e')) {
     double dval = strtod(pstr, NULL);
-    p->d = dval;
-    printf("pstr %s dval %f\n", pstr, dval);
-    return;
+    // +e -e
+    if (dval == 0.0 && pstr[0] == '+') {
+      Functor_t fnctor = { .call = increment_fp, .param[0].p = &p->d };
+      apply_idx = add_apply_func(fnctor);
+    } else if (dval == 0.0 && pstr[0] == '-') {
+      Functor_t fnctor = { .call = decrement_fp, .param[0].p = &p->d };
+      apply_idx = add_apply_func(fnctor);
+    } else {
+      p->d = dval;
+      printf("pstr %s dval %f\n", pstr, dval);
+      return;
+    }
   }
 
   uint64_t val = strtol(pstr, 0, 0);
-  long apply_idx = -1;
   if (val) {
     printf("pstr %s val %" PRIu64 "\n", pstr, val);
     p->i = val;
