@@ -169,6 +169,8 @@ parse_symtab(void *addr, void *symtab, void *strtab)
       continue;
     if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL)
       continue;
+    if (iter->st_size == 0)
+      continue;
     Object_t o = { .name = &read_strtab[iter->st_name],
                    .address = addr + iter->st_value,
                    .bytes = iter->st_size };
