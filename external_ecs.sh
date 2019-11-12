@@ -11,4 +11,4 @@ pushd submodule
 git clone git@github.com:rufeooo/test_games.git 
 popd
 echo building with $CC
-time $CC submodule/test_games/math/cc_quat_test.cc --std=c++17 -g -shared -fpic -O0 -o code/feature.so
+time $CC submodule/test_games/ecs/cc_ecs_test.cc --std=c++17 -g -shared -fpic -O0 -o code/feature.so
