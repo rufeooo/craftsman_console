@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "float.h"
 #include "functor.h"
 #include "macro.h"
 #include "rdtsc.h"
+
+#define DATA_COUNT 8
 
 size_t
 test(size_t a, size_t b, size_t c)
@@ -14,237 +17,43 @@ test(size_t a, size_t b, size_t c)
   return 0;
 }
 
-size_t
-test_i(size_t i)
+void
+clear_parameters(Functor_t *fp)
 {
-  printf("%lu\n", i);
-  return 1;
-}
-
-size_t
-test_ii(size_t i, size_t ii)
-{
-  printf("%lu %lu\n", i, ii);
-  return 2;
-}
-
-size_t
-test_iii(size_t i, size_t ii, size_t iii)
-{
-  printf("%lu %lu %lu\n", i, ii, iii);
-  return 3;
-}
-
-size_t
-test_p(const char *p)
-{
-  printf("%s\n", p);
-  return 1;
-}
-
-size_t
-test_pp(const char *p, const char *pp)
-{
-  printf("%s %s\n", p, pp);
-  return 2;
-}
-
-size_t
-test_ppp(const char *p, const char *pp, const char *ppp)
-{
-  printf("%s %s %s\n", p, pp, ppp);
-  return 3;
-}
-
-size_t
-test_pii(const char *p, size_t i, size_t ii)
-{
-  printf("%s %zu %zu\n", p, i, ii);
-  return 3;
-}
-
-size_t
-test_ppi(const char *p, const char *pp, size_t i)
-{
-  printf("%s %s %zu\n", p, pp, i);
-  return 3;
-}
-
-size_t
-test_pip(const char *p, size_t i, const char *pp)
-{
-  printf("%s %zu %s\n", p, i, pp);
-  return 3;
-}
-
-size_t
-test_ipi(size_t i, const char *p, size_t ii)
-{
-  printf("%zu %s %zu\n", i, p, ii);
-  return 3;
-}
-
-size_t
-test_iip(size_t i, size_t ii, const char *p)
-{
-  printf("%zu %zu %s\n", i, ii, p);
-  return 3;
-}
-
-size_t
-test_ipp(size_t i, const char *p, const char *pp)
-{
-  printf("%zu %s %s\n", i, p, pp);
-  return 3;
-}
-
-size_t
-test_ip(size_t i, const char *p)
-{
-  printf("%zu %s\n", i, p);
-  return 2;
-}
-
-size_t
-test_pi(const char *p, size_t i)
-{
-  printf("%s %zu\n", p, i);
-  return 2;
-}
-
-size_t
-test_d(double d)
-{
-  printf("%f\n", d);
-  return 1;
-}
-
-size_t
-test_dd(double d, double dd)
-{
-  printf("%f %f\n", d, dd);
-  return 2;
-}
-
-size_t
-test_ddd(double d, double dd, double ddd)
-{
-  printf("%f %f %f\n", d, dd, ddd);
-  return 3;
+  memset(fp->param, 0, sizeof(fp->param));
 }
 
 void
-test_fnctor_i(Functor_t f)
+push_parameters(size_t offset, const char *type_info, Param_t *next_param)
 {
-  for (int i = 0; i < 4; ++i) {
-    f.param[0].i = i;
-    functor_invoke(f);
-  }
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      f.param[0].i = i;
-      f.param[1].i = j;
-      functor_invoke(f);
-    }
-  }
-  for (int i = 0; i < 2; ++i) {
-    for (int j = 0; j < 2; ++j) {
-      for (int k = 0; k < 2; ++k) {
-        f.param[0].i = i;
-        f.param[1].i = j;
-        f.param[2].i = k;
-        functor_invoke(f);
-      }
-    }
-  }
-}
-
-void
-test_fnctor_p(Functor_t f)
-{
-  const void *ptr = "foo";
-  char *foo[] = {
-    "one", "two", "three", "four", "five", "six", "seven", "eight",
+  static char *example_p[] = {
+    "RESULT1", "RESULT2", "RESULT3", "RESULT4",
+    "RESULT5", "RESULT6", "RESULT7", "RESULT8",
   };
-  for (int i = 0; i < 4; ++i) {
-    f.param[0].p = foo[i];
-    functor_invoke(f);
-  }
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      f.param[0].p = foo[i];
-      f.param[1].p = foo[3 + j];
-      functor_invoke(f);
-    }
-  }
-  for (int i = 0; i < 2; ++i) {
-    for (int j = 0; j < 2; ++j) {
-      for (int k = 0; k < 2; ++k) {
-        f.param[0].p = foo[i];
-        f.param[1].p = foo[2 + j];
-        f.param[2].p = foo[4 + k];
-        functor_invoke(f);
-      }
-    }
-  }
-}
-
-void
-test_fnctor_mix2(Functor_t fip, Functor_t fpi)
-{
-  char *foo[] = {
-    "one", "two", "three", "four", "five", "six", "seven", "eight",
+  static uint64_t example_i[] = {
+    1231,      2323513,  35817,        472311,
+    591203857, 62373363, 712375832891, 819239283,
   };
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      fip.param[0].i = i + 1;
-      fip.param[1].p = foo[j];
-      functor_invoke(fip);
-    }
-  }
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      fpi.param[0].p = foo[i];
-      fpi.param[1].i = j + 1;
-      functor_invoke(fpi);
-    }
-  }
-}
-
-void
-test_fnctor_mix3()
-{
-  Functor_t mix3[] = {
-    functor_init(test_pii), functor_init(test_ppi), functor_init(test_pip),
-    functor_init(test_ipi), functor_init(test_iip), functor_init(test_ipp),
+  static double example_d[] = {
+    1.23412, 2.8123, 3.1415926, 4.5911, 5.5912, 6.1837, 7.8917822, 8.0111,
   };
+  if (*type_info == 0)
+    return;
 
-  char *foo[] = {
-    "one", "two", "three", "four", "five", "six", "seven", "eight",
-  };
-  for (int base = 0; base < ARRAY_LENGTH(mix3); ++base) {
-    Functor_t f = mix3[base];
-
-    // TODO
+  offset = MIN(DATA_COUNT - 1, offset);
+  switch (*type_info) {
+  case 'd':
+    next_param->d = example_d[offset];
+    break;
+  case 'i':
+    next_param->i = example_i[offset];
+    break;
+  case 'p':
+    next_param->p = example_p[offset];
+    break;
   }
-}
 
-void
-test_fnctor_d()
-{
-  Functor_t f;
-  f = functor_init(test_d);
-  f.param[0].d = (double) 1.0;
-  functor_invoke(f);
-  f = functor_init(test_dd);
-  f.param[0].d = (double) 2.0;
-  f.param[1].d = (double) 2.23124123;
-  functor_invoke(f);
-  f = functor_init(test_ddd);
-  f.param[0].d = (double) 3.1315926;
-  f.param[1].d = (double) 4.5123;
-  f.param[2].d = (double) 5.8234;
-  functor_invoke(f);
+  push_parameters(offset, type_info + 1, next_param + 1);
 }
 
 void
@@ -257,6 +66,487 @@ void
 manual_call(Functor_t f)
 {
   f.call(f.param[0], f.param[1], f.param[2]);
+}
+
+static char global_result[8];
+static Functor_t gf;
+static size_t go;
+void
+clear_result()
+{
+  memset(global_result, 0, sizeof(global_result));
+}
+void
+param_choose_n(const char *param_types, int n, char *result)
+{
+  if (!n) {
+    *result = 0;
+    printf("\nglobal_result %s\n", global_result);
+    push_parameters(go, global_result, gf.param);
+    functor_invoke(gf);
+    return;
+  }
+
+  const char *read = param_types;
+  while (*read) {
+    *result = *read++;
+    param_choose_n(param_types, n - 1, result + 1);
+  }
+}
+
+void
+check_count(int i)
+{
+  if (strlen(global_result) < i)
+    printf("undercall\n");
+  else if (strlen(global_result) > i)
+    printf("overcall\n");
+}
+
+void
+check_d(char c, ApiDouble_t d)
+{
+  if (c == 'd')
+    printf("valid %f\n", d.value);
+  else
+    printf("mismatch d/%c: %zx\n", c, d._pdbr);
+}
+
+void
+check_i(char c, int64_t i)
+{
+  if (c == 'i')
+    printf("valid %zd\n", i);
+  else
+    printf("mismatch i/%c: %zx\n", c, i);
+}
+
+void
+check_p(char c, const char *p)
+{
+  if (c == 'p')
+    printf("valid \"%s\"\n", p);
+  else
+    printf("mismatch p/%c: %p\n", c, p);
+}
+
+#define CHECK(c, X) \
+  _Generic((X), ApiDouble_t : check_d, int64_t : check_i, const char * : check_p)(c, X)
+
+size_t
+test_d(ApiDouble_t d)
+{
+  check_count(1);
+  CHECK(global_result[0], d);
+
+  return 1;
+}
+
+size_t
+test_i(int64_t i)
+{
+  check_count(1);
+  CHECK(global_result[0], i);
+
+  return 1;
+}
+
+size_t
+test_p(const char *p)
+{
+  check_count(1);
+  CHECK(global_result[0], p);
+
+  return 1;
+}
+
+size_t
+test_dd(ApiDouble_t d, ApiDouble_t dd)
+{
+  check_count(2);
+
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], dd);
+
+  return 1;
+}
+
+size_t
+test_di(ApiDouble_t d, int64_t ii)
+{
+  check_count(2);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], ii);
+
+  return 1;
+}
+
+size_t
+test_dp(ApiDouble_t d, const char *pp)
+{
+  check_count(2);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], pp);
+
+  return 1;
+}
+
+size_t
+test_id(int64_t i, ApiDouble_t dd)
+{
+  check_count(2);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], dd);
+
+  return 1;
+}
+
+size_t
+test_ii(int64_t i, int64_t ii)
+{
+  check_count(2);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], ii);
+
+  return 1;
+}
+
+size_t
+test_ip(int64_t i, const char *pp)
+{
+  check_count(2);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], pp);
+
+  return 1;
+}
+
+size_t
+test_pd(const char *p, ApiDouble_t dd)
+{
+  check_count(2);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], dd);
+
+  return 1;
+}
+
+size_t
+test_pi(const char *p, int64_t i)
+{
+  check_count(2);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], i);
+
+  return 1;
+}
+
+size_t
+test_pp(const char *p, const char *pp)
+{
+  check_count(2);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], pp);
+
+  return 1;
+}
+
+size_t
+test_ddd(ApiDouble_t d, ApiDouble_t dd, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_ddi(ApiDouble_t d, ApiDouble_t dd, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], iii);
+
+  return 0;
+}
+
+size_t
+test_ddp(ApiDouble_t d, ApiDouble_t dd, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_did(ApiDouble_t d, int64_t ii, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_dii(ApiDouble_t d, int64_t ii, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_dip(ApiDouble_t d, int64_t ii, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_dpd(ApiDouble_t d, const char *pp, ApiDouble_t ddd)
+{
+  check_count(3);
+
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_dpi(ApiDouble_t d, const char *pp, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_dpp(ApiDouble_t d, const char *pp, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], d);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_idd(int64_t i, ApiDouble_t dd, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_idi(int64_t i, ApiDouble_t dd, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_idp(int64_t i, ApiDouble_t dd, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_iid(int64_t i, int64_t ii, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_iii(int64_t i, int64_t ii, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_iip(int64_t i, int64_t ii, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_ipd(int64_t i, const char *pp, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_ipi(int64_t i, const char *pp, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_ipp(int64_t i, const char *pp, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], i);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_pdd(const char *p, ApiDouble_t dd, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_pdi(const char *p, ApiDouble_t dd, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_pdp(const char *p, ApiDouble_t dd, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], dd);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_pid(const char *p, int64_t ii, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_pii(const char *p, int64_t ii, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_pip(const char *p, int64_t ii, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], ii);
+  CHECK(global_result[2], ppp);
+
+  return 1;
+}
+
+size_t
+test_ppd(const char *p, const char *pp, ApiDouble_t ddd)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], ddd);
+
+  return 1;
+}
+
+size_t
+test_ppi(const char *p, const char *pp, int64_t iii)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], iii);
+
+  return 1;
+}
+
+size_t
+test_ppp(const char *p, const char *pp, const char *ppp)
+{
+  check_count(3);
+  CHECK(global_result[0], p);
+  CHECK(global_result[1], pp);
+  CHECK(global_result[2], ppp);
+
+  return 1;
 }
 
 int
@@ -286,33 +576,35 @@ main(int argc, char **argv)
   }
   uint64_t end3 = rdtsc();
 
-  printf("\n%lu functor %lu indirect %lu direct\n", end1 - start, end2 - end1,
+  puts("Performance timing");
+  printf("%lu functor %lu indirect %lu direct\n", end1 - start, end2 - end1,
          end3 - end2);
 
-  f = functor_init(test_i);
-  test_fnctor_i(f);
-  puts("--");
-  f = functor_init(test_ii);
-  test_fnctor_i(f);
-  puts("--");
-  f = functor_init(test_iii);
-  test_fnctor_i(f);
-  puts("--end i");
-  puts("--begin p");
-  f = functor_init(test_p);
-  test_fnctor_p(f);
-  puts("--");
-  f = functor_init(test_pp);
-  test_fnctor_p(f);
-  puts("--");
-  f = functor_init(test_ppp);
-  test_fnctor_p(f);
-  puts("--end p");
-
-  test_fnctor_mix2(functor_init(test_ip), functor_init(test_pi));
-  // TODO: test_fnctor_mix3
-
-  test_fnctor_d();
+  FuncPointer call_address[] = {
+    test_d,   test_i,   test_p,   test_dd,  test_di,  test_dp,  test_id,
+    test_ii,  test_ip,  test_pd,  test_pi,  test_pp,  test_ddd, test_ddi,
+    test_ddp, test_did, test_dii, test_dip, test_dpd, test_dpi, test_dpp,
+    test_idd, test_idi, test_idp, test_iid, test_iii, test_iip, test_ipd,
+    test_ipi, test_ipp, test_pdd, test_pdi, test_pdp, test_pid, test_pii,
+    test_pip, test_ppd, test_ppi, test_ppp,
+  };
+  const char *call_name[] = {
+    "test_d",   "test_i",   "test_p",   "test_dd",  "test_di",  "test_dp",
+    "test_id",  "test_ii",  "test_ip",  "test_pd",  "test_pi",  "test_pp",
+    "test_ddd", "test_ddi", "test_ddp", "test_did", "test_dii", "test_dip",
+    "test_dpd", "test_dpi", "test_dpp", "test_idd", "test_idi", "test_idp",
+    "test_iid", "test_iii", "test_iip", "test_ipd", "test_ipi", "test_ipp",
+    "test_pdd", "test_pdi", "test_pdp", "test_pid", "test_pii", "test_pip",
+    "test_ppd", "test_ppi", "test_ppp",
+  };
+  clear_result();
+  for (int j = 0; j < ARRAY_LENGTH(call_address); ++j) {
+    gf = (Functor_t){ .call = call_address[j] };
+    printf("\n\nTesting call %s\n", call_name[j]);
+    for (int i = 0; i <= PARAM_COUNT; ++i) {
+      param_choose_n("dip", i, global_result);
+    }
+  }
 
   return 0;
 }
