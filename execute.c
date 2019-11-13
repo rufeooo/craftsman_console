@@ -6,6 +6,7 @@
 #include "dlfn.h"
 #include "float.h"
 #include "functor.h"
+#include "global.c"
 #include "hash.h"
 #include "macro.h"
 #include "rdtsc.h"
@@ -16,6 +17,7 @@
 static size_t result[MAX_SYMBOLS];
 static uint64_t hash_result[MAX_FUNC];
 static Functor_t apply_func[MAX_FUNC];
+static int symbol_load[MAX_FUNC][PARAM_COUNT];
 static size_t used_apply_func;
 static __uint128_t apply_func_condition;
 static Functor_t result_func[MAX_FUNC];
@@ -57,9 +59,11 @@ decrement_fp(double *val)
 }
 
 size_t
-copy(const size_t *src, size_t *dst)
+copy(Param_t *dst, const Param_t *src)
 {
+  printf("Copy %p <- %p\n", dst, src);
   *dst = *src;
+  printf("Copied %lu <- %lu\n", dst->i, src->i);
   return 1;
 }
 
@@ -103,87 +107,63 @@ tokenize(size_t len, char *input, size_t token_count,
   return tc;
 }
 
-size_t
+int
 add_apply_func(Functor_t fnctor)
 {
   if (used_apply_func >= MAX_FUNC)
-    return false;
+    return -1;
 
-  size_t idx = used_apply_func;
+  int idx = used_apply_func;
   apply_func[idx] = fnctor;
   ++used_apply_func;
   return idx;
 }
 
-bool
+int
 add_result_func(Functor_t fnctor)
 {
   if (used_result_func >= MAX_FUNC)
-    return false;
+    return -1;
 
-  result_func[used_result_func] = fnctor;
+  int idx = used_result_func;
+  result_func[idx] = fnctor;
   ++used_result_func;
-  return true;
+  return idx;
 }
 
-void
-apply_param(Functor_t *precondition, const char *pstr, Param_t *p)
+char
+apply_value_param(const char *str_value, Param_t *p)
 {
-  long apply_idx = -1;
-
-  if (strchr(pstr, '.') || strchr(pstr, 'e')) {
-    double dval = strtod(pstr, NULL);
-    // +e -e
-    if (dval == 0.0 && pstr[0] == '+') {
-      Functor_t fnctor = { .call = increment_fp, .param[0].p = &p->d };
-      apply_idx = add_apply_func(fnctor);
-    } else if (dval == 0.0 && pstr[0] == '-') {
-      Functor_t fnctor = { .call = decrement_fp, .param[0].p = &p->d };
-      apply_idx = add_apply_func(fnctor);
-    } else {
-      p->d = dval;
-      printf("pstr %s dval %f\n", pstr, dval);
-      return;
-    }
+  if (strchr(str_value, '.') || strchr(str_value, 'e')) {
+    double dval = strtod(str_value, NULL);
+    p->d = dval;
+    return 'd';
   }
 
-  uint64_t val = strtol(pstr, 0, 0);
-  if (val) {
-    printf("pstr %s val %" PRIu64 "\n", pstr, val);
-    p->i = val;
-  } else if (pstr[0] == '+') {
-    Functor_t fnctor = { .call = increment, .param[0].p = &p->i };
-    apply_idx = add_apply_func(fnctor);
-  } else if (pstr[0] == '-') {
-    Functor_t fnctor = { .call = decrement, .param[0].p = &p->i };
-    apply_idx = add_apply_func(fnctor);
-  } else if (pstr[0] == '<') {
-    Functor_t fnctor = { .call = left_shift, .param[0].p = &p->i };
-    apply_idx = add_apply_func(fnctor);
-  } else if (pstr[0] == '@') {
-    const Symbol_t *sym = dlfn_get_symbol(&pstr[1]);
-    if (sym) {
-      uint32_t sym_offset = (sym - dlfn_symbols);
-      Functor_t fnctor = { .call = copy,
-                           .param[0].p = &result[sym_offset],
-                           .param[1].p = &p->i };
-      add_result_func(fnctor);
-      printf("pstr result of %s [offset %u]\n", &pstr[1], sym_offset);
+  p->i = strtol(str_value, 0, 0);
+  return 'i';
+}
 
-    } else {
-      printf("sym not found %s\n", &pstr[1]);
-    }
-  } else { // TODO
-    printf("parameter unhandled %s\n", pstr);
+int
+apply_load_param(const char *str_value, Param_t *p)
+{
+  if (str_value[0] != '<')
+    return -1;
+
+  Global_t *var = global_get(&str_value[1]);
+  if (!var) {
+    return -1;
   }
 
-  if (apply_idx >= 0) {
-    printf("%ld apply index: pstr %s\n", apply_idx, pstr);
-    if (precondition) {
-      precondition->param[1].i = apply_idx;
-      add_result_func(*precondition);
-    }
-  }
+  Functor_t fnctor = {
+    .call = copy,
+    .param[0].p = p,
+    .param[1].p = &var->value,
+  };
+  int idx = add_result_func(fnctor);
+  printf("%d: Store into %p variable %s\n", idx, p, str_value);
+
+  return idx;
 }
 
 void
@@ -195,6 +175,7 @@ execute_init()
   apply_func_condition = ~0;
   memset(result_func, 0, sizeof(result_func));
   used_result_func = 0;
+  memset(symbol_load, ~0, sizeof(symbol_load));
 }
 
 void
@@ -207,10 +188,13 @@ execute_apply_functions()
 }
 
 void
-execute_result_functions()
+execute_load_functions(int symbol_offset)
 {
-  for (int j = 0; j < used_result_func; ++j) {
-    functor_invoke(result_func[j]);
+  for (int i = 0; i < PARAM_COUNT; ++i) {
+    int func = symbol_load[symbol_offset][i];
+    if (func >= 0) {
+      functor_invoke(result_func[func]);
+    }
   }
 }
 
@@ -317,8 +301,13 @@ execute_apply(size_t len, char *input)
       int ti = next_token + pi + 1;
       if (ti >= tc)
         break;
-      apply_param(precondition, token[ti],
-                  &dlfn_symbols[fi].fnctor.param[pi]);
+      int func =
+        apply_load_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
+      symbol_load[fi][pi] = func;
+      if (func >= 0) {
+        continue;
+      }
+      apply_value_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
     }
   }
   ++next_token;
@@ -366,6 +355,38 @@ execute_hash(size_t len, char *input)
       memhash_cont(hash_seed, dlfn_objects[i].address, dlfn_objects[i].bytes);
     hash_result[i] = hash_seed;
     printf("Hashval %s: %lu\n", dlfn_objects[i].name, hash_seed);
+  }
+}
+
+void
+execute_variable(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 3;
+  char *token[TOKEN_COUNT];
+  int tc = tokenize(len, input, TOKEN_COUNT, token);
+
+  if (tc < 3) {
+    puts("Usage: variable <name> <value|@func|+|->");
+    return;
+  }
+
+  printf("%s %s %s\n", token[0], token[1], token[2]);
+  Global_t *var = global_get(token[1]);
+  if (var) {
+    puts("Variable name already in use");
+    return;
+  }
+
+  Global_t new_var;
+  global_init(token[1], &new_var);
+
+  const char *value_str = token[2];
+  if (value_str[0] == '@') {
+    puts("TODO: function result redirection");
+  } else {
+    char type = apply_value_param(token[2], &new_var.value);
+    new_var.type = type;
+    global_append(&new_var);
   }
 }
 

@@ -114,6 +114,28 @@ input_callback(size_t len, char *input)
 }
 
 void
+prompt(int player_count)
+{
+  dlfn_print_symbols();
+  dlfn_print_objects();
+  global_print();
+  printf("Simulation will run until frame %d.\n", simulation_goal);
+  if (player_count)
+    printf("Player Count: %d\n", player_count);
+  puts(""
+       "(a)pply "
+       "(b)enchmark "
+       "(h)ash "
+       "(i)nfo "
+       "(q)uit "
+       "(r)eload "
+       "(o)bject "
+       "(s)imulation "
+       "(v)ariable "
+       ">");
+}
+
+void
 execute_any(size_t len, char *input)
 {
   switch (input[0]) {
@@ -129,29 +151,16 @@ execute_any(size_t len, char *input)
   case 'o':
     execute_object(len, input);
     return;
+  case 'p':
+    prompt(0);
+    return;
   case 'h':
     execute_hash(len, input);
     return;
+  case 'v':
+    execute_variable(len, input);
+    return;
   }
-}
-
-void
-prompt(int player_count)
-{
-  dlfn_print_symbols();
-  dlfn_print_objects();
-  printf("Simulation will run until frame %d.\n", simulation_goal);
-  printf("Player Count: %d\n", player_count);
-  puts(""
-       "(a)pply "
-       "(b)enchmark "
-       "(h)ash "
-       "(i)nfo "
-       "(q)uit "
-       "(r)eload "
-       "(o)bject "
-       "(s)imulation "
-       ">");
 }
 
 void
@@ -240,12 +249,12 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
     execute_apply_functions();
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {
+      execute_load_functions(i);
+
       uint64_t startCall = rdtsc();
       result[i] = functor_invoke(dlfn_symbols[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
-
-      execute_result_functions();
     }
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {
