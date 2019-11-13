@@ -14,46 +14,16 @@ static char dlname[MAX_PATH];
 static void *dlhandle;
 
 // visible
-Symbol_t dlfn_symbols[MAX_SYMBOLS];
-int dlfn_used_symbols;
-Object_t dlfn_objects[MAX_SYMBOLS];
-int dlfn_used_objects;
-
-static void
-reset_symbols()
-{
-  memset(dlfn_symbols, 0, sizeof(dlfn_symbols));
-  dlfn_used_symbols = 0;
-}
-
-static void
-add_symbol(Symbol_t sym)
-{
-  if (dlfn_used_symbols >= MAX_SYMBOLS)
-    return;
-  dlfn_symbols[dlfn_used_symbols++] = sym;
-}
-
-static void
-reset_objects()
-{
-  memset(dlfn_objects, 0, sizeof(dlfn_symbols));
-  dlfn_used_symbols = 0;
-}
-
-static void
-add_object(Object_t obj)
-{
-  if (dlfn_used_objects >= MAX_SYMBOLS)
-    return;
-  dlfn_objects[dlfn_used_objects++] = obj;
-}
+Function_t dlfn_function[MAX_SYMBOLS];
+int dlfn_used_function;
+Object_t dlfn_object[MAX_SYMBOLS];
+int dlfn_used_object;
 
 int
 symbol_order(const void *lhs, const void *rhs)
 {
-  const Symbol_t *lhv = lhs;
-  const Symbol_t *rhv = rhs;
+  const Function_t *lhv = lhs;
+  const Function_t *rhv = rhs;
   size_t lhfn = (size_t) lhv->fnctor.call;
   size_t rhfn = (size_t) rhv->fnctor.call;
 
@@ -66,9 +36,9 @@ symbol_order(const void *lhs, const void *rhs)
 }
 
 void
-sort_symbols()
+sort_functions()
 {
-  qsort(dlfn_symbols, dlfn_used_symbols, ARRAY_MEMBER_SIZE(dlfn_symbols),
+  qsort(dlfn_function, dlfn_used_function, ARRAY_MEMBER_SIZE(dlfn_function),
         symbol_order);
 }
 
@@ -89,17 +59,17 @@ object_order(const void *lhs, const void *rhs)
 void
 sort_objects()
 {
-  qsort(dlfn_objects, dlfn_used_objects, ARRAY_MEMBER_SIZE(dlfn_objects),
+  qsort(dlfn_object, dlfn_used_object, ARRAY_MEMBER_SIZE(dlfn_object),
         object_order);
 }
 
 void
-dlfn_print_symbols()
+dlfn_print_functions()
 {
-  printf("--Symbols--\n");
-  for (int i = 0; i < dlfn_used_symbols; ++i) {
-    printf("[ %p ] %s\n", (void *) dlfn_symbols[i].fnctor.call,
-           dlfn_symbols[i].name);
+  printf("--Functions--\n");
+  for (int i = 0; i < dlfn_used_function; ++i) {
+    printf("[ %p ] %s\n", (void *) dlfn_function[i].fnctor.call,
+           dlfn_function[i].name);
   }
 }
 
@@ -107,8 +77,8 @@ void
 dlfn_print_objects()
 {
   printf("--Objects--\n");
-  for (int i = 0; i < dlfn_used_objects; ++i) {
-    Object_t *obj = &dlfn_objects[i];
+  for (int i = 0; i < dlfn_used_object; ++i) {
+    Object_t *obj = &dlfn_object[i];
     printf("[ %zu bytes ] %s: %p\n", obj->bytes, obj->name, obj->address);
   }
 }
@@ -116,20 +86,20 @@ dlfn_print_objects()
 void
 dlfn_call(const char *name)
 {
-  for (int i = 0; i < dlfn_used_symbols; ++i) {
-    if (strcmp(name, dlfn_symbols[i].name) == 0) {
-      int r = dlfn_symbols[i].fnctor.call();
+  for (int i = 0; i < dlfn_used_function; ++i) {
+    if (strcmp(name, dlfn_function[i].name) == 0) {
+      int r = dlfn_function[i].fnctor.call();
       printf("%s returns %d\n", name, r);
     }
   }
 }
 
-Symbol_t *
+Function_t *
 dlfn_get_symbol(const char *name)
 {
-  for (int i = 0; i < dlfn_used_symbols; ++i) {
-    if (strcmp(name, dlfn_symbols[i].name) == 0) {
-      return &dlfn_symbols[i];
+  for (int i = 0; i < dlfn_used_function; ++i) {
+    if (strcmp(name, dlfn_function[i].name) == 0) {
+      return &dlfn_function[i];
     }
   }
 
@@ -139,9 +109,9 @@ dlfn_get_symbol(const char *name)
 Object_t *
 dlfn_get_object(const char *name)
 {
-  for (int i = 0; i < dlfn_used_objects; ++i) {
-    if (strcmp(name, dlfn_objects[i].name) == 0) {
-      return &dlfn_objects[i];
+  for (int i = 0; i < dlfn_used_object; ++i) {
+    if (strcmp(name, dlfn_object[i].name) == 0) {
+      return &dlfn_object[i];
     }
   }
 
@@ -160,9 +130,13 @@ parse_symtab(void *addr, void *symtab, void *strtab)
       continue;
     if (iter->st_size == 0)
       continue;
-    Symbol_t s = { .name = &read_strtab[iter->st_name],
-                   .fnctor = functor_init((void *) (addr + iter->st_value)) };
-    add_symbol(s);
+    Function_t s = { .name = &read_strtab[iter->st_name],
+                     .fnctor =
+                       functor_init((void *) (addr + iter->st_value)) };
+
+    if (dlfn_used_function >= MAX_SYMBOLS)
+      break;
+    dlfn_function[dlfn_used_function++] = s;
   }
 
   iter = symtab;
@@ -177,7 +151,9 @@ parse_symtab(void *addr, void *symtab, void *strtab)
                    .address = addr + iter->st_value,
                    .bytes = iter->st_size };
 
-    add_object(o);
+    if (dlfn_used_object >= MAX_SYMBOLS)
+      break;
+    dlfn_object[dlfn_used_object++] = o;
   }
 }
 
@@ -251,7 +227,7 @@ dlfn_open()
   }
 
   // Functors follow call ordering of the address space
-  sort_symbols();
+  sort_functions();
   sort_objects();
 
   return true;
@@ -263,8 +239,10 @@ dlfn_close()
   if (!dlhandle)
     return false;
 
-  reset_symbols();
-  reset_objects();
+  memset(dlfn_function, 0, sizeof(dlfn_function));
+  dlfn_used_function = 0;
+  memset(dlfn_object, 0, sizeof(dlfn_function));
+  dlfn_used_object = 0;
   int result = dlclose(dlhandle);
   if (result != 0)
     puts(dlerror());

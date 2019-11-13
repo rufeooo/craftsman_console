@@ -94,7 +94,7 @@ game_players(RecordRW_t recording[static MAX_PLAYER])
 void
 prompt(int player_count)
 {
-  dlfn_print_symbols();
+  dlfn_print_functions();
   dlfn_print_objects();
   global_var_print();
   puts(""
@@ -268,32 +268,32 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
 
     global_call_mutators();
 
-    for (int i = 0; i < dlfn_used_symbols; ++i) {
+    for (int i = 0; i < dlfn_used_function; ++i) {
       call_load_param(i);
 
       uint64_t startCall = rdtsc();
-      result[i] = functor_invoke(dlfn_symbols[i].fnctor);
+      result[i] = functor_invoke(dlfn_function[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
 
       call_store_result(i);
     }
 
-    for (int i = 0; i < dlfn_used_symbols; ++i) {
+    for (int i = 0; i < dlfn_used_function; ++i) {
       stats_sample_add(&perfStats[i], perf[i]);
     }
 
-    for (int i = 0; i < dlfn_used_objects; ++i) {
-      record_append(frame_store.rec, dlfn_objects[i].bytes,
-                    dlfn_objects[i].address, &frame_store.write);
+    for (int i = 0; i < dlfn_used_object; ++i) {
+      record_append(frame_store.rec, dlfn_object[i].bytes,
+                    dlfn_object[i].address, &frame_store.write);
     }
 
     loop_sync();
   }
   puts("--simulation performance");
-  for (int i = 0; i < dlfn_used_symbols; ++i) {
+  for (int i = 0; i < dlfn_used_function; ++i) {
     printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-           dlfn_symbols[i].name, stats_min(&perfStats[i]),
+           dlfn_function[i].name, stats_min(&perfStats[i]),
            stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
            100.0 * stats_rs_dev(&perfStats[i]));
   }

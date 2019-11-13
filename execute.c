@@ -161,11 +161,11 @@ execute_benchmark()
       stats_init(&perfStats[i]);
     }
 
-    for (int i = 0; i < dlfn_used_symbols; ++i) {
+    for (int i = 0; i < dlfn_used_function; ++i) {
       double sum = 0;
       for (int j = 0; j < calls; ++j) {
         uint64_t startCall = rdtsc();
-        functor_invoke(dlfn_symbols[i].fnctor);
+        functor_invoke(dlfn_function[i].fnctor);
         uint64_t endCall = rdtsc();
         double duration = to_double(endCall - startCall);
         stats_sample_add(&perfStats[i], duration);
@@ -175,9 +175,9 @@ execute_benchmark()
     }
 
     printf("--per 10e%d\n", h);
-    for (int i = 0; i < dlfn_used_symbols; ++i) {
+    for (int i = 0; i < dlfn_used_function; ++i) {
       printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
-             dlfn_symbols[i].name, stats_min(&perfStats[i]),
+             dlfn_function[i].name, stats_min(&perfStats[i]),
              stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
              100.0 * stats_rs_dev(&perfStats[i]));
     }
@@ -222,11 +222,11 @@ execute_parameter(size_t len, char *input)
   }
 
   int matched = 0;
-  for (int fi = 0; fi < dlfn_used_symbols; ++fi) {
+  for (int fi = 0; fi < dlfn_used_function; ++fi) {
     const char *filter =
-      token[1][0] == '*' ? dlfn_symbols[fi].name : token[1];
+      token[1][0] == '*' ? dlfn_function[fi].name : token[1];
 
-    if (strcmp(filter, dlfn_symbols[fi].name))
+    if (strcmp(filter, dlfn_function[fi].name))
       continue;
 
     ++matched;
@@ -236,12 +236,13 @@ execute_parameter(size_t len, char *input)
         break;
 
       int func = set_load_param(token[token_index],
-                                &dlfn_symbols[fi].fnctor.param[pi]);
+                                &dlfn_function[fi].fnctor.param[pi]);
       load_param_handle[fi][pi] = func;
       if (func > 0)
         continue;
 
-      set_value_param(token[token_index], &dlfn_symbols[fi].fnctor.param[pi]);
+      set_value_param(token[token_index],
+                      &dlfn_function[fi].fnctor.param[pi]);
     }
   }
 
@@ -283,11 +284,11 @@ execute_hash(size_t len, char *input)
 {
   memset(hash_objects, 0, sizeof(hash_objects));
   uint64_t hash_val = memhash(0, 0);
-  for (int i = 0; i < dlfn_used_objects; ++i) {
+  for (int i = 0; i < dlfn_used_object; ++i) {
     hash_val =
-      memhash_cont(hash_val, dlfn_objects[i].address, dlfn_objects[i].bytes);
+      memhash_cont(hash_val, dlfn_object[i].address, dlfn_object[i].bytes);
     hash_objects[i] = hash_val;
-    printf("Hashval %s: %lu\n", dlfn_objects[i].name, hash_val);
+    printf("Hashval %s: %lu\n", dlfn_object[i].name, hash_val);
   }
 }
 
@@ -327,13 +328,13 @@ execute_result(size_t len, char *input)
   }
 
   printf("%s %s %s\n", token[0], token[1], token[2]);
-  Symbol_t *sym = dlfn_get_symbol(token[1]);
+  Function_t *sym = dlfn_get_symbol(token[1]);
   if (!sym) {
     printf("Cannot store result, function %s not found.\n", token[1]);
     return;
   }
 
-  int sym_offset = sym - dlfn_symbols;
+  int sym_offset = sym - dlfn_function;
   int func = set_store_param(token[2], &result[sym_offset]);
   save_result_handle[sym_offset] = func;
 }

@@ -9,7 +9,7 @@
 typedef struct {
   const char *name;
   Functor_t fnctor;
-} Symbol_t;
+} Function_t;
 
 typedef struct {
   const char *name;
@@ -18,15 +18,15 @@ typedef struct {
 } Object_t;
 
 #define MAX_SYMBOLS 32
-extern Symbol_t dlfn_symbols[MAX_SYMBOLS];
-extern int dlfn_used_symbols;
-extern Object_t dlfn_objects[MAX_SYMBOLS];
-extern int dlfn_used_objects;
+extern Function_t dlfn_function[MAX_SYMBOLS];
+extern int dlfn_used_function;
+extern Object_t dlfn_object[MAX_SYMBOLS];
+extern int dlfn_used_object;
 
-Symbol_t *dlfn_get_symbol(const char *name);
+Function_t *dlfn_get_symbol(const char *name);
 Object_t *dlfn_get_object(const char *name);
 void dlfn_call(const char *name);
-void dlfn_print_symbols();
+void dlfn_print_functions();
 void dlfn_print_objects();
 
 bool dlfn_init(const char *filepath);
