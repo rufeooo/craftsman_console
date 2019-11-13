@@ -12,14 +12,14 @@
 #include "rdtsc.h"
 #include "stats.h"
 
-#define MAX_FUNC 128
-
+static uint64_t hash_objects[MAX_SYMBOLS];
 static size_t result[MAX_SYMBOLS];
-static uint64_t hash_result[MAX_FUNC];
+static int load_param_handle[MAX_SYMBOLS][PARAM_COUNT];
+static int save_result_handle[MAX_SYMBOLS];
+
+#define MAX_FUNC (MAX_SYMBOLS * PARAM_COUNT)
 static Functor_t result_func[MAX_FUNC];
 static size_t used_result_func;
-static int load_param_handle[MAX_FUNC][PARAM_COUNT];
-static int save_result_handle[MAX_FUNC];
 
 size_t
 noop()
@@ -281,13 +281,13 @@ execute_object(size_t len, char *input)
 void
 execute_hash(size_t len, char *input)
 {
-  memset(hash_result, 0, sizeof(hash_result));
-  uint64_t hash_seed = memhash(0, 0);
+  memset(hash_objects, 0, sizeof(hash_objects));
+  uint64_t hash_val = memhash(0, 0);
   for (int i = 0; i < dlfn_used_objects; ++i) {
-    hash_seed =
-      memhash_cont(hash_seed, dlfn_objects[i].address, dlfn_objects[i].bytes);
-    hash_result[i] = hash_seed;
-    printf("Hashval %s: %lu\n", dlfn_objects[i].name, hash_seed);
+    hash_val =
+      memhash_cont(hash_val, dlfn_objects[i].address, dlfn_objects[i].bytes);
+    hash_objects[i] = hash_val;
+    printf("Hashval %s: %lu\n", dlfn_objects[i].name, hash_val);
   }
 }
 
