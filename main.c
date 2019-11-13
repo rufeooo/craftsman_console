@@ -97,18 +97,21 @@ prompt(int player_count)
   dlfn_print_symbols();
   dlfn_print_objects();
   global_print();
-  printf("Simulation will run until frame %d.\n", simulation_goal);
   if (player_count)
     printf("Player Count: %d\n", player_count);
   puts(""
-       "(b)enchmark "
-       "(f)unc_result "
-       "(h)ash "
-       "(i)nfo "
-       "(o)bject "
-       "(p)arameter "
+       "Immediate commands (!)\n "
+       "(f)rame_info "
+       "(p)rompt "
        "(q)uit "
        "(r)eload "
+       "\n"
+       "Synchronized Commands\n "
+       "(b)enchmark "
+       "(h)ash "
+       "(o)bject "
+       "(p)arameter "
+       "(r)esult "
        "(s)imulation "
        "(v)ariable "
        ">");
@@ -117,26 +120,31 @@ prompt(int player_count)
 void
 input_callback(size_t len, char *input)
 {
-  // These events are not recorded
-  switch (input[0]) {
-  case 'r':
-    simulation_goal = 0;
-    loop_halt();
+  if (*input != '!') {
+    record_append(input_rw.rec, len, input, &input_rw.write);
+    return;
+  }
+
+  ++input;
+  // Meta commands are immediate and not recorded
+  switch (*input) {
+  case 'f':
+    loop_print_status();
+    printf("Simulation will run until frame %d.\n", simulation_goal);
+    return;
+  case 'p':
+    prompt(0);
     return;
   case 'q':
     simulation_goal = 0;
     exiting = true;
     loop_halt();
     return;
-  case 'i':
-    loop_print_status();
-    return;
-  case '?':
-    prompt(0);
+  case 'r':
+    simulation_goal = 0;
+    loop_halt();
     return;
   }
-
-  record_append(input_rw.rec, len, input, &input_rw.write);
 }
 
 void
@@ -146,9 +154,6 @@ execute_any(size_t len, char *input)
   case 'b':
     execute_benchmark();
     return;
-  case 'f':
-    execute_result(len, input);
-    return;
   case 'h':
     execute_hash(len, input);
     return;
@@ -157,6 +162,9 @@ execute_any(size_t len, char *input)
     return;
   case 'p':
     execute_parameter(len, input);
+    return;
+  case 'r':
+    execute_result(len, input);
     return;
   case 's':
     simulation_goal = execute_simulation(len, input);
