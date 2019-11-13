@@ -135,7 +135,7 @@ execute_init()
 }
 
 void
-execute_load_param(int symbol_offset)
+call_load_param(int symbol_offset)
 {
   for (int i = 0; i < PARAM_COUNT; ++i) {
     int func = load_param_handle[symbol_offset][i];
@@ -144,7 +144,7 @@ execute_load_param(int symbol_offset)
 }
 
 void
-execute_store_result(int symbol_offset)
+call_store_result(int symbol_offset)
 {
   int func = save_result_handle[symbol_offset];
   functor_invoke(result_func[func]);
@@ -339,5 +339,20 @@ execute_result(size_t len, char *input)
   int sym_offset = sym - dlfn_symbols;
   int func = set_store_param(token[2], &result[sym_offset]);
   save_result_handle[sym_offset] = func;
+}
+
+void
+execute_mutation(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 3;
+  char *token[TOKEN_COUNT];
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
+
+  if (token_count < 3) {
+    puts("Usage: mutation <variable> <+|->");
+    return;
+  }
+
+  global_mutator(token[1], token[2][0]);
 }
 

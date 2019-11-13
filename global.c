@@ -10,7 +10,34 @@ typedef struct {
   char name[MAX_VARIABLE_NAME];
   Param_t value;
   char type;
+  Functor_t mutation;
 } Global_t;
+
+size_t
+increment(Global_t *var)
+{
+  switch (var->type) {
+  case 'i':
+    return ++var->value.i;
+  case 'd':
+    return ++var->value.d;
+  }
+
+  return 0;
+}
+
+size_t
+decrement(Global_t *var)
+{
+  switch (var->type) {
+  case 'i':
+    return --var->value.i;
+  case 'd':
+    return --var->value.d;
+  }
+
+  return 0;
+}
 
 #define MAX_VARIABLE 64
 Global_t global_var[MAX_VARIABLE];
@@ -79,5 +106,32 @@ global_get_or_create(const char *name)
   global_init(name, &global_var[idx]);
   ++global_used;
   return &global_var[idx];
+}
+
+bool
+global_mutator(const char *name, char op)
+{
+  Global_t *var = global_get(name);
+  if (!var)
+    return false;
+
+  if (op == '+') {
+    var->mutation = (Functor_t){ .call = increment, .param[0].p = var };
+  } else if (op == '-') {
+    var->mutation = (Functor_t){ .call = decrement, .param[0].p = var };
+  } else {
+    var->mutation = (Functor_t){ 0 };
+  }
+
+  return true;
+}
+
+void
+global_call_mutators()
+{
+  for (int i = 0; i < global_used; ++i) {
+    if (global_var[i].mutation.call)
+      functor_invoke(global_var[i].mutation);
+  }
 }
 

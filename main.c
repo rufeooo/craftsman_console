@@ -109,6 +109,7 @@ prompt(int player_count)
        "Synchronized Commands\n "
        "(b)enchmark "
        "(h)ash "
+       "(m)utation "
        "(o)bject "
        "(p)arameter "
        "(r)esult "
@@ -156,6 +157,9 @@ execute_any(size_t len, char *input)
     return;
   case 'h':
     execute_hash(len, input);
+    return;
+  case 'm':
+    execute_mutation(len, input);
     return;
   case 'o':
     execute_object(len, input);
@@ -258,15 +262,17 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       continue;
     }
 
+    global_call_mutators();
+
     for (int i = 0; i < dlfn_used_symbols; ++i) {
-      execute_load_param(i);
+      call_load_param(i);
 
       uint64_t startCall = rdtsc();
       result[i] = functor_invoke(dlfn_symbols[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
 
-      execute_store_result(i);
+      call_store_result(i);
     }
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {
