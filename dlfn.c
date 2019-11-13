@@ -96,6 +96,7 @@ sort_objects()
 void
 dlfn_print_symbols()
 {
+  printf("--Symbols--\n");
   for (int i = 0; i < dlfn_used_symbols; ++i) {
     printf("[ %p ] %s\n", (void *) dlfn_symbols[i].fnctor.call,
            dlfn_symbols[i].name);
@@ -105,6 +106,7 @@ dlfn_print_symbols()
 void
 dlfn_print_objects()
 {
+  printf("--Objects--\n");
   for (int i = 0; i < dlfn_used_objects; ++i) {
     Object_t *obj = &dlfn_objects[i];
     printf("[ %zu bytes ] %s: %p\n", obj->bytes, obj->name, obj->address);

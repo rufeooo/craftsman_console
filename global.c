@@ -83,6 +83,7 @@ global_init(const char *name, Global_t *var)
 void
 global_var_print()
 {
+  printf("--Variables--\n");
   for (int i = 0; i < global_used; ++i) {
     printf("[ var '%c' ] %s ( ", global_var[i].type, global_var[i].name);
     switch (global_var[i].type) {

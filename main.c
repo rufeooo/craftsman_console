@@ -97,17 +97,15 @@ prompt(int player_count)
   dlfn_print_symbols();
   dlfn_print_objects();
   global_var_print();
-  if (player_count)
-    printf("Player Count: %d\n", player_count);
   puts(""
-       "Immediate commands (!)\n "
-       "(l)oop_info "
-       "(p)rompt "
-       "(q)uit "
-       "(r)eload "
-       "(v)ariables "
+       "--Commands--\n"
+       "Immediate\n "
+       "(!l)oop_info "
+       "(!q)uit "
+       "(!r)eload "
+       "(!...)prompt "
        "\n"
-       "Synchronized Commands\n "
+       "Synchronized \n "
        "(b)enchmark "
        "(c)ondition "
        "(h)ash "
@@ -118,6 +116,8 @@ prompt(int player_count)
        "(s)imulation "
        "(v)ariable "
        ">");
+  if (player_count)
+    printf("Connected player count: %d\n", player_count);
 }
 
 void
@@ -135,9 +135,6 @@ input_callback(size_t len, char *input)
     loop_print_status();
     printf("Simulation will run until frame %d.\n", simulation_goal);
     return;
-  case 'p':
-    prompt(0);
-    return;
   case 'q':
     simulation_goal = 0;
     exiting = true;
@@ -147,11 +144,9 @@ input_callback(size_t len, char *input)
     simulation_goal = 0;
     loop_halt();
     return;
-  case 'v':
-    puts("--Variables--");
-    global_var_print();
-    return;
   }
+
+  prompt(0);
 }
 
 void
