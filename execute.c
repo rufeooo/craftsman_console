@@ -16,52 +16,15 @@
 
 static size_t result[MAX_SYMBOLS];
 static uint64_t hash_result[MAX_FUNC];
-static Functor_t apply_func[MAX_FUNC];
-static size_t used_apply_func;
-static __uint128_t apply_func_condition;
 static Functor_t result_func[MAX_FUNC];
 static size_t used_result_func;
-static int param_load_handle[MAX_FUNC][PARAM_COUNT];
+static int load_param_handle[MAX_FUNC][PARAM_COUNT];
+static int save_result_handle[MAX_FUNC];
 
 size_t
 noop()
 {
   return 0;
-}
-
-size_t
-increment(size_t *val)
-{
-  *val += 1;
-  return 1;
-}
-
-size_t
-increment_fp(double *val)
-{
-  *val += 1.0;
-  return 1;
-}
-
-size_t
-left_shift(size_t *val)
-{
-  *val <<= 1;
-  return 1;
-}
-
-size_t
-decrement(size_t *val)
-{
-  *val -= 1;
-  return 1;
-}
-
-size_t
-decrement_fp(double *val)
-{
-  *val -= 1.0;
-  return 1;
 }
 
 size_t
@@ -71,27 +34,6 @@ copy(Param_t *dst, const Param_t *src)
   *dst = *src;
   printf("Copied %lu <- %lu\n", dst->i, src->i);
   return 1;
-}
-
-size_t
-fn_filter(size_t result_index, size_t apply_index)
-{
-  __uint128_t bit = (1 << apply_index);
-  if (result[result_index]) {
-    apply_func_condition |= bit;
-  } else {
-    apply_func_condition &= ~bit;
-  }
-
-  return 1;
-}
-
-size_t
-print_result(const Symbol_t *sym, size_t r)
-{
-  printf("0x%zX %s 0x%zX 0x%zX 0x%zX\n", r, sym->name, sym->fnctor.param[0].i,
-         sym->fnctor.param[1].i, sym->fnctor.param[2].i);
-  return 0;
 }
 
 int
@@ -114,18 +56,6 @@ tokenize(size_t len, char *input, size_t token_count,
 }
 
 int
-add_apply_func(Functor_t fnctor)
-{
-  if (used_apply_func >= MAX_FUNC)
-    return -1;
-
-  int idx = used_apply_func;
-  apply_func[idx] = fnctor;
-  ++used_apply_func;
-  return idx;
-}
-
-int
 add_result_func(Functor_t fnctor)
 {
   if (used_result_func >= MAX_FUNC)
@@ -138,7 +68,7 @@ add_result_func(Functor_t fnctor)
 }
 
 char
-apply_value_param(const char *str_value, Param_t *p)
+set_value_param(const char *str_value, Param_t *p)
 {
   if (strchr(str_value, '.') || strchr(str_value, 'e')) {
     double dval = strtod(str_value, NULL);
@@ -151,7 +81,7 @@ apply_value_param(const char *str_value, Param_t *p)
 }
 
 int
-apply_load_param(const char *str_value, Param_t *p)
+set_load_param(const char *str_value, Param_t *p)
 {
   if (str_value[0] != '<')
     return 0;
@@ -176,31 +106,19 @@ void
 execute_init()
 {
   memset(result, 0, sizeof(result));
-  memset(apply_func, 0, sizeof(apply_func));
-  used_apply_func = 0;
-  apply_func_condition = ~0;
   memset(result_func, 0, sizeof(result_func));
   used_result_func = 0;
-  memset(param_load_handle, 0, sizeof(param_load_handle));
+  memset(load_param_handle, 0, sizeof(load_param_handle));
 
   Functor_t np = { .call = noop };
   add_result_func(np);
 }
 
 void
-execute_var_mutator_functions()
-{
-  for (int i = 0; i < used_apply_func; ++i) {
-    if (FLAGGED(apply_func_condition, (1 << i)))
-      functor_invoke(apply_func[i]);
-  }
-}
-
-void
-execute_param_load_functions(int symbol_offset)
+execute_load_param(int symbol_offset)
 {
   for (int i = 0; i < PARAM_COUNT; ++i) {
-    int func = param_load_handle[symbol_offset][i];
+    int func = load_param_handle[symbol_offset][i];
     functor_invoke(result_func[func]);
   }
 }
@@ -257,70 +175,54 @@ execute_simulation(size_t len, char *input)
 {
   const unsigned TOKEN_COUNT = 2;
   char *token[TOKEN_COUNT];
-  int tc = tokenize(len, input, TOKEN_COUNT, token);
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (tc == 1)
+  if (token_count == 1)
     return SIMULATION_MAX;
 
   uint64_t val = strtol(token[1], 0, 0);
   return val;
 }
 
-// apply <?pre> <fn> <p1> <p2> <p3> <...>
+// parameter <func> <p1> <p2> <p3> <...>
 void
-execute_apply(size_t len, char *input)
+execute_parameter(size_t len, char *input)
 {
-  const unsigned TOKEN_COUNT = 7;
+  const unsigned TOKEN_COUNT = 6;
   char *token[TOKEN_COUNT];
-  int tc = tokenize(len, input, TOKEN_COUNT, token);
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (tc < 2) {
-    puts("Usage: apply <?precondition> <func> <param1> <param2> <param3>");
+  if (token_count < 2) {
+    puts("Usage: parameter <func> <param1> <param2> <param3>");
     return;
-  }
-
-  int next_token = 1;
-  Functor_t *precondition = { 0 };
-  if (token[next_token][0] == '?') {
-    const Symbol_t *sym = dlfn_get_symbol(&token[next_token][1]);
-    if (!sym) {
-      puts("precondition not found.");
-      return;
-    }
-
-    uint32_t sym_offset = (sym - dlfn_symbols);
-    static Functor_t fnctor = { .call = fn_filter };
-    fnctor.param[0].i = sym_offset;
-    precondition = &fnctor;
-    ++next_token;
   }
 
   int matched = 0;
   for (int fi = 0; fi < dlfn_used_symbols; ++fi) {
     const char *filter =
-      token[next_token][0] == '*' ? dlfn_symbols[fi].name : token[next_token];
+      token[1][0] == '*' ? dlfn_symbols[fi].name : token[1];
 
     if (strcmp(filter, dlfn_symbols[fi].name))
       continue;
 
     ++matched;
     for (int pi = 0; pi < PARAM_COUNT; ++pi) {
-      int ti = next_token + pi + 1;
-      if (ti >= tc)
+      int token_index = pi + 2;
+      if (token_index >= token_count)
         break;
-      int func =
-        apply_load_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
-      param_load_handle[fi][pi] = func;
-      if (func > 0) {
+
+      int func = set_load_param(token[token_index],
+                                &dlfn_symbols[fi].fnctor.param[pi]);
+      load_param_handle[fi][pi] = func;
+      if (func > 0)
         continue;
-      }
-      apply_value_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
+
+      set_value_param(token[token_index], &dlfn_symbols[fi].fnctor.param[pi]);
     }
   }
-  ++next_token;
 
   if (!matched) {
-    printf("Failure to apply: function not found (%s).\n", token[1]);
+    printf("Function not found (%s).\n", token[1]);
     return;
   }
 }
@@ -330,9 +232,9 @@ execute_object(size_t len, char *input)
 {
   const unsigned TOKEN_COUNT = 2;
   char *token[TOKEN_COUNT];
-  int tc = tokenize(len, input, TOKEN_COUNT, token);
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (tc < 2) {
+  if (token_count < 2) {
     puts("Usage: object <name>");
     return;
   }
@@ -370,9 +272,9 @@ execute_variable(size_t len, char *input)
 {
   const unsigned TOKEN_COUNT = 3;
   char *token[TOKEN_COUNT];
-  int tc = tokenize(len, input, TOKEN_COUNT, token);
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (tc < 3) {
+  if (token_count < 3) {
     puts("Usage: variable <name> <value>");
     return;
   }
@@ -385,10 +287,10 @@ execute_variable(size_t len, char *input)
   }
 
   const char *value_str = token[2];
-  if (value_str[0] == '@') {
+  if (value_str[0] == '>') {
     puts("TODO: function result redirection");
   } else {
-    char type = apply_value_param(token[2], &var->value);
+    char type = set_value_param(token[2], &var->value);
     var->type = type;
   }
 }

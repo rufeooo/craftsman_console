@@ -123,13 +123,13 @@ prompt(int player_count)
   if (player_count)
     printf("Player Count: %d\n", player_count);
   puts(""
-       "(a)pply "
        "(b)enchmark "
        "(h)ash "
        "(i)nfo "
        "(q)uit "
        "(r)eload "
        "(o)bject "
+       "(p)arameter "
        "(s)imulation "
        "(v)ariable "
        ">");
@@ -145,14 +145,11 @@ execute_any(size_t len, char *input)
   case 's':
     simulation_goal = execute_simulation(len, input);
     return;
-  case 'a':
-    execute_apply(len, input);
-    return;
   case 'o':
     execute_object(len, input);
     return;
   case 'p':
-    prompt(0);
+    execute_parameter(len, input);
     return;
   case 'h':
     execute_hash(len, input);
@@ -246,10 +243,8 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       continue;
     }
 
-    execute_var_mutator_functions();
-
     for (int i = 0; i < dlfn_used_symbols; ++i) {
-      execute_param_load_functions(i);
+      execute_load_param(i);
 
       uint64_t startCall = rdtsc();
       result[i] = functor_invoke(dlfn_symbols[i].fnctor);
