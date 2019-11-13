@@ -102,6 +102,26 @@ set_load_param(const char *str_value, Param_t *p)
   return idx;
 }
 
+int
+set_store_param(const char *str_value, size_t *result_ptr)
+{
+  Global_t *var = global_get_or_create(str_value);
+  if (!var) {
+    return 0;
+  }
+
+  var->type = 'i';
+  Functor_t fnctor = {
+    .call = copy,
+    .param[0].p = &var->value,
+    .param[1].p = result_ptr,
+  };
+  int idx = add_result_func(fnctor);
+  printf("%d: Store into variable %s ptr %p\n", idx, str_value, result_ptr);
+
+  return idx;
+}
+
 void
 execute_init()
 {
@@ -121,6 +141,13 @@ execute_load_param(int symbol_offset)
     int func = load_param_handle[symbol_offset][i];
     functor_invoke(result_func[func]);
   }
+}
+
+void
+execute_store_result(int symbol_offset)
+{
+  int func = save_result_handle[symbol_offset];
+  functor_invoke(result_func[func]);
 }
 
 void
@@ -279,7 +306,6 @@ execute_variable(size_t len, char *input)
     return;
   }
 
-  printf("%s %s %s\n", token[0], token[1], token[2]);
   Global_t *var = global_get_or_create(token[1]);
   if (!var) {
     puts("Variable is null - out of reserved space.");
@@ -287,11 +313,31 @@ execute_variable(size_t len, char *input)
   }
 
   const char *value_str = token[2];
-  if (value_str[0] == '>') {
-    puts("TODO: function result redirection");
-  } else {
-    char type = set_value_param(token[2], &var->value);
-    var->type = type;
+  char type = set_value_param(token[2], &var->value);
+  var->type = type;
+}
+
+void
+execute_result(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 3;
+  char *token[TOKEN_COUNT];
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
+
+  if (token_count < 3) {
+    puts("Usage: result <func> <variable>");
+    return;
   }
+
+  printf("%s %s %s\n", token[0], token[1], token[2]);
+  Symbol_t *sym = dlfn_get_symbol(token[1]);
+  if (!sym) {
+    printf("Cannot store result, function %s not found.\n", token[1]);
+    return;
+  }
+
+  int sym_offset = sym - dlfn_symbols;
+  int func = set_store_param(token[2], &result[sym_offset]);
+  save_result_handle[sym_offset] = func;
 }
 

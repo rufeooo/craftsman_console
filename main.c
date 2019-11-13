@@ -92,6 +92,29 @@ game_players(RecordRW_t recording[static MAX_PLAYER])
 }
 
 void
+prompt(int player_count)
+{
+  dlfn_print_symbols();
+  dlfn_print_objects();
+  global_print();
+  printf("Simulation will run until frame %d.\n", simulation_goal);
+  if (player_count)
+    printf("Player Count: %d\n", player_count);
+  puts(""
+       "(b)enchmark "
+       "(f)unc_result "
+       "(h)ash "
+       "(i)nfo "
+       "(o)bject "
+       "(p)arameter "
+       "(q)uit "
+       "(r)eload "
+       "(s)imulation "
+       "(v)ariable "
+       ">");
+}
+
+void
 input_callback(size_t len, char *input)
 {
   // These events are not recorded
@@ -108,31 +131,12 @@ input_callback(size_t len, char *input)
   case 'i':
     loop_print_status();
     return;
+  case '?':
+    prompt(0);
+    return;
   }
 
   record_append(input_rw.rec, len, input, &input_rw.write);
-}
-
-void
-prompt(int player_count)
-{
-  dlfn_print_symbols();
-  dlfn_print_objects();
-  global_print();
-  printf("Simulation will run until frame %d.\n", simulation_goal);
-  if (player_count)
-    printf("Player Count: %d\n", player_count);
-  puts(""
-       "(b)enchmark "
-       "(h)ash "
-       "(i)nfo "
-       "(q)uit "
-       "(r)eload "
-       "(o)bject "
-       "(p)arameter "
-       "(s)imulation "
-       "(v)ariable "
-       ">");
 }
 
 void
@@ -142,8 +146,11 @@ execute_any(size_t len, char *input)
   case 'b':
     execute_benchmark();
     return;
-  case 's':
-    simulation_goal = execute_simulation(len, input);
+  case 'f':
+    execute_result(len, input);
+    return;
+  case 'h':
+    execute_hash(len, input);
     return;
   case 'o':
     execute_object(len, input);
@@ -151,8 +158,8 @@ execute_any(size_t len, char *input)
   case 'p':
     execute_parameter(len, input);
     return;
-  case 'h':
-    execute_hash(len, input);
+  case 's':
+    simulation_goal = execute_simulation(len, input);
     return;
   case 'v':
     execute_variable(len, input);
@@ -250,6 +257,8 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       result[i] = functor_invoke(dlfn_symbols[i].fnctor);
       uint64_t endCall = rdtsc();
       perf[i] = to_double(endCall - startCall);
+
+      execute_store_result(i);
     }
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {

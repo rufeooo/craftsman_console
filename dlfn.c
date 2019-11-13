@@ -97,8 +97,8 @@ void
 dlfn_print_symbols()
 {
   for (int i = 0; i < dlfn_used_symbols; ++i) {
-    printf("%s: %p\n", dlfn_symbols[i].name,
-           (void *) dlfn_symbols[i].fnctor.call);
+    printf("[ %p ] %s\n", (void *) dlfn_symbols[i].fnctor.call,
+           dlfn_symbols[i].name);
   }
 }
 
