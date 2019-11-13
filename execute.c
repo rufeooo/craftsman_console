@@ -17,11 +17,17 @@
 static size_t result[MAX_SYMBOLS];
 static uint64_t hash_result[MAX_FUNC];
 static Functor_t apply_func[MAX_FUNC];
-static int symbol_load[MAX_FUNC][PARAM_COUNT];
 static size_t used_apply_func;
 static __uint128_t apply_func_condition;
 static Functor_t result_func[MAX_FUNC];
 static size_t used_result_func;
+static int param_load_handle[MAX_FUNC][PARAM_COUNT];
+
+size_t
+noop()
+{
+  return 0;
+}
 
 size_t
 increment(size_t *val)
@@ -148,11 +154,11 @@ int
 apply_load_param(const char *str_value, Param_t *p)
 {
   if (str_value[0] != '<')
-    return -1;
+    return 0;
 
   Global_t *var = global_get(&str_value[1]);
   if (!var) {
-    return -1;
+    return 0;
   }
 
   Functor_t fnctor = {
@@ -175,11 +181,14 @@ execute_init()
   apply_func_condition = ~0;
   memset(result_func, 0, sizeof(result_func));
   used_result_func = 0;
-  memset(symbol_load, ~0, sizeof(symbol_load));
+  memset(param_load_handle, 0, sizeof(param_load_handle));
+
+  Functor_t np = { .call = noop };
+  add_result_func(np);
 }
 
 void
-execute_apply_functions()
+execute_var_mutator_functions()
 {
   for (int i = 0; i < used_apply_func; ++i) {
     if (FLAGGED(apply_func_condition, (1 << i)))
@@ -188,13 +197,11 @@ execute_apply_functions()
 }
 
 void
-execute_load_functions(int symbol_offset)
+execute_param_load_functions(int symbol_offset)
 {
   for (int i = 0; i < PARAM_COUNT; ++i) {
-    int func = symbol_load[symbol_offset][i];
-    if (func >= 0) {
-      functor_invoke(result_func[func]);
-    }
+    int func = param_load_handle[symbol_offset][i];
+    functor_invoke(result_func[func]);
   }
 }
 
@@ -303,8 +310,8 @@ execute_apply(size_t len, char *input)
         break;
       int func =
         apply_load_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
-      symbol_load[fi][pi] = func;
-      if (func >= 0) {
+      param_load_handle[fi][pi] = func;
+      if (func > 0) {
         continue;
       }
       apply_value_param(token[ti], &dlfn_symbols[fi].fnctor.param[pi]);
@@ -366,27 +373,23 @@ execute_variable(size_t len, char *input)
   int tc = tokenize(len, input, TOKEN_COUNT, token);
 
   if (tc < 3) {
-    puts("Usage: variable <name> <value|@func|+|->");
+    puts("Usage: variable <name> <value>");
     return;
   }
 
   printf("%s %s %s\n", token[0], token[1], token[2]);
-  Global_t *var = global_get(token[1]);
-  if (var) {
-    puts("Variable name already in use");
+  Global_t *var = global_get_or_create(token[1]);
+  if (!var) {
+    puts("Variable is null - out of reserved space.");
     return;
   }
-
-  Global_t new_var;
-  global_init(token[1], &new_var);
 
   const char *value_str = token[2];
   if (value_str[0] == '@') {
     puts("TODO: function result redirection");
   } else {
-    char type = apply_value_param(token[2], &new_var.value);
-    new_var.type = type;
-    global_append(&new_var);
+    char type = apply_value_param(token[2], &var->value);
+    var->type = type;
   }
 }
 

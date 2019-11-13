@@ -246,10 +246,10 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       continue;
     }
 
-    execute_apply_functions();
+    execute_var_mutator_functions();
 
     for (int i = 0; i < dlfn_used_symbols; ++i) {
-      execute_load_functions(i);
+      execute_param_load_functions(i);
 
       uint64_t startCall = rdtsc();
       result[i] = functor_invoke(dlfn_symbols[i].fnctor);
