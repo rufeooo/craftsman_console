@@ -10,8 +10,36 @@ typedef struct {
   char name[MAX_VARIABLE_NAME];
   Param_t value;
   char type;
+  Functor_t condition;
   Functor_t mutation;
 } Global_t;
+
+// Pure
+size_t
+less_than(const Global_t *lhv, const Global_t *rhv)
+{
+  switch (lhv->type & rhv->type) {
+  case 'i':
+    return lhv->value.i < rhv->value.i;
+  case 'd':
+    return lhv->value.d < rhv->value.d;
+  }
+
+  return 0;
+}
+
+size_t
+greater_than(const Global_t *lhv, const Global_t *rhv)
+{
+  switch (lhv->type & rhv->type) {
+  case 'i':
+    return lhv->value.i > rhv->value.i;
+  case 'd':
+    return lhv->value.d > rhv->value.d;
+  }
+
+  return 0;
+}
 
 size_t
 increment(Global_t *var)
@@ -39,9 +67,10 @@ decrement(Global_t *var)
   return 0;
 }
 
+// File scope
 #define MAX_VARIABLE 64
-Global_t global_var[MAX_VARIABLE];
-size_t global_used;
+static Global_t global_var[MAX_VARIABLE];
+static size_t global_used;
 
 static void
 global_init(const char *name, Global_t *var)
@@ -52,7 +81,7 @@ global_init(const char *name, Global_t *var)
 }
 
 void
-global_print()
+global_var_print()
 {
   for (int i = 0; i < global_used; ++i) {
     printf("[ var '%c' ] %s ( ", global_var[i].type, global_var[i].name);
@@ -76,7 +105,7 @@ global_append(Global_t *var)
 
   global_var[global_used] = *var;
   ++global_used;
-  global_print();
+  global_var_print();
   return true;
 }
 
@@ -108,28 +137,49 @@ global_get_or_create(const char *name)
   return &global_var[idx];
 }
 
-bool
+Global_t *
 global_mutator(const char *name, char op)
 {
   Global_t *var = global_get(name);
   if (!var)
-    return false;
+    return 0;
 
   if (op == '+') {
+    puts("increment mutation");
     var->mutation = (Functor_t){ .call = increment, .param[0].p = var };
   } else if (op == '-') {
+    puts("decrement mutation");
     var->mutation = (Functor_t){ .call = decrement, .param[0].p = var };
   } else {
+    puts("no mutation");
     var->mutation = (Functor_t){ 0 };
   }
 
-  return true;
+  return var;
+}
+
+void
+global_condition(char op, Global_t *var)
+{
+  if (op == '<') {
+    puts("less_than condition");
+    var->condition = (Functor_t){ .call = less_than };
+  } else if (op == '>') {
+    puts("greater_than condition");
+    var->condition = (Functor_t){ .call = greater_than };
+  } else {
+    puts("no condition");
+    var->condition = (Functor_t){ 0 };
+  }
 }
 
 void
 global_call_mutators()
 {
   for (int i = 0; i < global_used; ++i) {
+    if (global_var[i].condition.call
+        && functor_invoke(global_var[i].condition) == 0)
+      continue;
     if (global_var[i].mutation.call)
       functor_invoke(global_var[i].mutation);
   }

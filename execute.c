@@ -83,10 +83,7 @@ set_value_param(const char *str_value, Param_t *p)
 int
 set_load_param(const char *str_value, Param_t *p)
 {
-  if (str_value[0] != '<')
-    return 0;
-
-  Global_t *var = global_get(&str_value[1]);
+  Global_t *var = global_get(str_value);
   if (!var) {
     return 0;
   }
@@ -349,10 +346,38 @@ execute_mutation(size_t len, char *input)
   int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
   if (token_count < 3) {
-    puts("Usage: mutation <variable> <+|->");
+    puts("Usage: mutation <variable> +-");
     return;
   }
 
-  global_mutator(token[1], token[2][0]);
+  Global_t *var = global_mutator(token[1], token[2][0]);
+}
+
+void
+execute_condition(size_t len, char *input)
+{
+  const unsigned TOKEN_COUNT = 5;
+  char *token[TOKEN_COUNT];
+  int token_count = tokenize(len, input, TOKEN_COUNT, token);
+
+  if (token_count < TOKEN_COUNT) {
+    puts("Usage: condition <variable> <variable> [<,>] <variable>");
+    return;
+  }
+
+  Global_t *result_var = global_get(token[1]);
+  Global_t *lhv = global_get(token[2]);
+  Global_t *rhv = global_get(token[4]);
+  if (!result_var || !lhv || !rhv) {
+    puts("A variable in the condition could not be found.");
+    return;
+  }
+  if (lhv->type != rhv->type) {
+    puts("Condition variable types do not match");
+    return;
+  }
+  global_condition(token[3][0], result_var);
+  result_var->condition.param[0].cp = lhv;
+  result_var->condition.param[1].cp = rhv;
 }
 

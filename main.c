@@ -96,18 +96,20 @@ prompt(int player_count)
 {
   dlfn_print_symbols();
   dlfn_print_objects();
-  global_print();
+  global_var_print();
   if (player_count)
     printf("Player Count: %d\n", player_count);
   puts(""
        "Immediate commands (!)\n "
-       "(f)rame_info "
+       "(l)oop_info "
        "(p)rompt "
        "(q)uit "
        "(r)eload "
+       "(v)ariables "
        "\n"
        "Synchronized Commands\n "
        "(b)enchmark "
+       "(c)ondition "
        "(h)ash "
        "(m)utation "
        "(o)bject "
@@ -129,7 +131,7 @@ input_callback(size_t len, char *input)
   ++input;
   // Meta commands are immediate and not recorded
   switch (*input) {
-  case 'f':
+  case 'l':
     loop_print_status();
     printf("Simulation will run until frame %d.\n", simulation_goal);
     return;
@@ -145,6 +147,10 @@ input_callback(size_t len, char *input)
     simulation_goal = 0;
     loop_halt();
     return;
+  case 'v':
+    puts("--Variables--");
+    global_var_print();
+    return;
   }
 }
 
@@ -154,6 +160,9 @@ execute_any(size_t len, char *input)
   switch (input[0]) {
   case 'b':
     execute_benchmark();
+    return;
+  case 'c':
+    execute_condition(len, input);
     return;
   case 'h':
     execute_hash(len, input);
