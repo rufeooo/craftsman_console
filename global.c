@@ -11,7 +11,7 @@ typedef struct {
   Param_t value;
   char type;
   Functor_t condition;
-  Functor_t mutation;
+  char mutation;
 } Global_t;
 
 // Pure
@@ -94,7 +94,7 @@ global_var_print()
       printf("%f", global_var[i].value.d);
       break;
     }
-    printf(" )\n");
+    printf(" ) [ mutation %c ]\n", global_var[i].mutation);
   }
 }
 
@@ -138,27 +138,6 @@ global_get_or_create(const char *name)
   return &global_var[idx];
 }
 
-Global_t *
-global_mutator(const char *name, char op)
-{
-  Global_t *var = global_get(name);
-  if (!var)
-    return 0;
-
-  if (op == '+') {
-    puts("increment mutation");
-    var->mutation = (Functor_t){ .call = increment, .param[0].p = var };
-  } else if (op == '-') {
-    puts("decrement mutation");
-    var->mutation = (Functor_t){ .call = decrement, .param[0].p = var };
-  } else {
-    puts("no mutation");
-    var->mutation = (Functor_t){ 0 };
-  }
-
-  return var;
-}
-
 void
 global_condition(char op, Global_t *var)
 {
@@ -178,11 +157,18 @@ void
 global_call_mutators()
 {
   for (int i = 0; i < global_used; ++i) {
+    Global_t *var = &global_var[i];
     if (global_var[i].condition.call
         && functor_invoke(global_var[i].condition) == 0)
       continue;
-    if (global_var[i].mutation.call)
-      functor_invoke(global_var[i].mutation);
+    switch (var->mutation) {
+    case '+':
+      increment(var);
+      break;
+    case '-':
+      decrement(var);
+      break;
+    }
   }
 }
 

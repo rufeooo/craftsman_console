@@ -343,15 +343,23 @@ void
 execute_mutation(size_t len, char *input)
 {
   const unsigned TOKEN_COUNT = 3;
+  const unsigned MIN_TOKEN = 2;
   char *token[TOKEN_COUNT];
   int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (token_count < 3) {
+  if (token_count < MIN_TOKEN) {
     puts("Usage: mutation <variable> +-");
     return;
   }
 
-  Global_t *var = global_mutator(token[1], token[2][0]);
+  Global_t *var = global_get(token[1]);
+  if (!var) {
+    puts("Variable not found.");
+    return;
+  }
+
+  char mut = token_count >= TOKEN_COUNT ? token[2][0] : 0;
+  var->mutation = mut;
 }
 
 void
