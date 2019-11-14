@@ -15,7 +15,7 @@ typedef struct {
 } Global_t;
 
 // Pure
-size_t
+static size_t
 less_than(const Global_t *lhv, const Global_t *rhv)
 {
   switch (lhv->type & rhv->type) {
@@ -28,7 +28,7 @@ less_than(const Global_t *lhv, const Global_t *rhv)
   return 0;
 }
 
-size_t
+static size_t
 greater_than(const Global_t *lhv, const Global_t *rhv)
 {
   switch (lhv->type & rhv->type) {
@@ -42,7 +42,7 @@ greater_than(const Global_t *lhv, const Global_t *rhv)
 }
 
 size_t
-increment(Global_t *var)
+static increment(Global_t *var)
 {
   switch (var->type) {
   case 'i':
@@ -55,7 +55,7 @@ increment(Global_t *var)
 }
 
 size_t
-decrement(Global_t *var)
+static decrement(Global_t *var)
 {
   switch (var->type) {
   case 'i':
@@ -67,11 +67,6 @@ decrement(Global_t *var)
   return 0;
 }
 
-// File scope
-#define MAX_VARIABLE 64
-static Global_t global_var[MAX_VARIABLE];
-static size_t global_used;
-
 static void
 global_init(const char *name, Global_t *var)
 {
@@ -79,6 +74,11 @@ global_init(const char *name, Global_t *var)
   strncpy(var->name, name, MAX_VARIABLE_NAME);
   var->name[MAX_VARIABLE_NAME - 1] = 0;
 }
+
+// File scope
+#define MAX_VARIABLE 64
+static Global_t global_var[MAX_VARIABLE];
+static size_t global_used;
 
 void
 global_var_print()
