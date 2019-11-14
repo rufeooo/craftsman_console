@@ -365,28 +365,42 @@ execute_mutation(size_t len, char *input)
 void
 execute_condition(size_t len, char *input)
 {
-  const unsigned TOKEN_COUNT = 5;
+  const unsigned TOKEN_COUNT = 4;
   char *token[TOKEN_COUNT];
   int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
   if (token_count < TOKEN_COUNT) {
-    puts("Usage: condition <variable> <variable> [<,>] <variable>");
+    puts(
+      "Usage: condition <variable|constant> [<,>,+,-] <variable|constant>");
     return;
   }
 
-  Global_t *result_var = global_get(token[1]);
-  Global_t *lhv = global_get(token[2]);
-  Global_t *rhv = global_get(token[4]);
-  if (!result_var || !lhv || !rhv) {
-    puts("A variable in the condition could not be found.");
+  const Global_t *lhv = global_get(token[1]);
+  Global_t *rhv = global_get(token[3]);
+
+  Op_t op;
+  if (lhv) {
+    op.operand_type[0] = 'p';
+    op.operand[0].cp = lhv;
+  } else {
+    op.operand_type[0] = set_value_param(token[1], &op.operand[0]);
+  }
+  if (rhv) {
+    op.operand_type[1] = 'p';
+    op.operand[1].cp = rhv;
+  } else {
+    op.operand_type[1] = set_value_param(token[3], &op.operand[1]);
+  }
+  op.operator[0] = token[2][0];
+
+  if (op.operand_type[0] ^ op.operand_type[1])
+  {
+    puts("Type mismatch");
     return;
   }
-  if (lhv->type != rhv->type) {
-    puts("Condition variable types do not match");
-    return;
-  }
-  global_condition(token[3][0], result_var);
-  result_var->condition.param[0].cp = lhv;
-  result_var->condition.param[1].cp = rhv;
+
+  Param_t result;
+  char result_type = perform_op(&op, &result);
+  printf("[ result_type %c ]: %f %zu\n", result_type, result.d, result.i);
 }
 

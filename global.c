@@ -7,6 +7,15 @@
 #define MAX_VARIABLE_NAME 16
 
 typedef struct {
+  union {
+    char operator[1];
+    uint8_t opcode;
+  };
+  Param_t operand[2];
+  char operand_type[2];
+} Op_t;
+
+typedef struct {
   char name[MAX_VARIABLE_NAME];
   Param_t value;
   char type;
@@ -41,8 +50,7 @@ greater_than(const Global_t *lhv, const Global_t *rhv)
   return 0;
 }
 
-size_t
-static increment(Global_t *var)
+size_t static increment(Global_t *var)
 {
   switch (var->type) {
   case 'i':
@@ -54,8 +62,7 @@ static increment(Global_t *var)
   return 0;
 }
 
-size_t
-static decrement(Global_t *var)
+size_t static decrement(Global_t *var)
 {
   switch (var->type) {
   case 'i':
@@ -73,6 +80,71 @@ global_init(const char *name, Global_t *var)
   *var = (Global_t){ 0 };
   strncpy(var->name, name, MAX_VARIABLE_NAME);
   var->name[MAX_VARIABLE_NAME - 1] = 0;
+}
+
+double
+perform_op_double(short opcode, double lhv, double rhv)
+{
+  switch (opcode) {
+  case '+':
+    return lhv + rhv;
+  case '-':
+    return lhv - rhv;
+  case '>':
+    return lhv > rhv;
+  case '<':
+    return lhv < rhv;
+  }
+
+  return 0.0;
+}
+
+size_t
+perform_op_int(short opcode, size_t lhv, size_t rhv)
+{
+  switch (opcode) {
+  case '+':
+    return lhv + rhv;
+  case '-':
+    return lhv - rhv;
+  case '>':
+    return lhv > rhv;
+  case '<':
+    return lhv < rhv;
+  }
+
+  return 0;
+}
+
+char
+perform_op(const Op_t *op, Param_t *out)
+{
+  char operand_type[2];
+  Param_t operand[2];
+  for (int i = 0; i < 2; ++i) {
+    char op_type = op->operand_type[i];
+    switch (op_type) {
+    case 'p':
+      operand_type[i] = ((const Global_t *) op->operand[i].p)->type;
+      operand[i] = ((const Global_t *) op->operand[i].p)->value;
+      break;
+    default:
+      operand_type[i] = op_type;
+      operand[i] = op->operand[i];
+    }
+  }
+
+  char op_type = operand_type[0] & operand_type[1];
+  switch (op_type) {
+  case 'i':
+    out->i = perform_op_int(op->opcode, operand[0].i, operand[1].i);
+    break;
+  case 'd':
+    out->d = perform_op_double(op->opcode, operand[0].d, operand[1].d);
+    break;
+  }
+
+  return op_type;
 }
 
 // File scope
