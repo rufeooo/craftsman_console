@@ -88,6 +88,7 @@ set_load_param(const char *str_value, Param_t *p)
     return 0;
   }
 
+  var->type = 'i';
   Functor_t fnctor = {
     .call = copy,
     .param[0].p = p,
@@ -342,24 +343,35 @@ execute_result(size_t len, char *input)
 void
 execute_mutation(size_t len, char *input)
 {
-  const unsigned TOKEN_COUNT = 3;
-  const unsigned MIN_TOKEN = 2;
+  const unsigned TOKEN_COUNT = 4;
   char *token[TOKEN_COUNT];
   int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (token_count < MIN_TOKEN) {
-    puts("Usage: mutation <variable> +-");
+  if (token_count < TOKEN_COUNT) {
+    puts("Usage: mutation <variable> [<,>,+,-] <variable|constant>");
     return;
   }
 
-  Global_t *var = global_get(token[1]);
-  if (!var) {
-    puts("Variable not found.");
+  Global_t *lhv = global_get(token[1]);
+  const Global_t *rhv = global_get(token[3]);
+
+  if (!lhv) {
+    printf("Variable not found %s\n", token[1]);
     return;
   }
 
-  char mut = token_count >= TOKEN_COUNT ? token[2][0] : 0;
-  var->mutation = mut;
+  Op_t op = { .operand_type[0] = 'p',
+              .operand[0].cp = lhv,
+              .operator[0] = token[2][0] };
+
+  if (rhv) {
+    op.operand_type[1] = 'p';
+    op.operand[1].cp = rhv;
+  } else {
+    op.operand_type[1] = set_value_param(token[3], &op.operand[1]);
+  }
+
+  lhv->op = op;
 }
 
 void
@@ -376,7 +388,7 @@ execute_condition(size_t len, char *input)
   }
 
   const Global_t *lhv = global_get(token[1]);
-  Global_t *rhv = global_get(token[3]);
+  const Global_t *rhv = global_get(token[3]);
 
   Op_t op;
   if (lhv) {
@@ -392,12 +404,6 @@ execute_condition(size_t len, char *input)
     op.operand_type[1] = set_value_param(token[3], &op.operand[1]);
   }
   op.operator[0] = token[2][0];
-
-  if (op.operand_type[0] ^ op.operand_type[1])
-  {
-    puts("Type mismatch");
-    return;
-  }
 
   Param_t result;
   char result_type = perform_op(&op, &result);

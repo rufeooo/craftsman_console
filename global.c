@@ -7,20 +7,19 @@
 #define MAX_VARIABLE_NAME 16
 
 typedef struct {
+  Param_t operand[2];
+  char operand_type[2];
   union {
     char operator[1];
     uint8_t opcode;
   };
-  Param_t operand[2];
-  char operand_type[2];
 } Op_t;
 
 typedef struct {
   char name[MAX_VARIABLE_NAME];
   Param_t value;
   char type;
-  Functor_t condition;
-  char mutation;
+  Op_t op;
 } Global_t;
 
 // Pure
@@ -166,7 +165,7 @@ global_var_print()
       printf("%f", global_var[i].value.d);
       break;
     }
-    printf(" ) [ mutation %c ]\n", global_var[i].mutation);
+    printf(" )\n");
   }
 }
 
@@ -211,35 +210,24 @@ global_get_or_create(const char *name)
 }
 
 void
-global_condition(char op, Global_t *var)
-{
-  if (op == '<') {
-    puts("less_than condition");
-    var->condition = (Functor_t){ .call = less_than };
-  } else if (op == '>') {
-    puts("greater_than condition");
-    var->condition = (Functor_t){ .call = greater_than };
-  } else {
-    puts("no condition");
-    var->condition = (Functor_t){ 0 };
-  }
-}
-
-void
-global_call_mutators()
+global_var_ops()
 {
   for (int i = 0; i < global_used; ++i) {
     Global_t *var = &global_var[i];
-    if (global_var[i].condition.call
-        && functor_invoke(global_var[i].condition) == 0)
-      continue;
-    switch (var->mutation) {
-    case '+':
-      increment(var);
-      break;
-    case '-':
-      decrement(var);
-      break;
+    if (var->op.opcode) {
+      Param_t result;
+      char result_type = perform_op(&var->op, &result);
+      printf("[ result %c ]", result_type);
+      switch (result_type) {
+      case 'i':
+        printf(" %zu -> %zu\n", var->value.i, result.i);
+        break;
+      case 'd':
+        printf(" %f -> %f\n", var->value.d, result.d);
+        break;
+      }
+      var->value = result;
+      var->type = result_type;
     }
   }
 }

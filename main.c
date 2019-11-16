@@ -266,7 +266,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
       continue;
     }
 
-    global_call_mutators();
+    global_var_ops();
 
     for (int i = 0; i < dlfn_used_function; ++i) {
       call_load_param(i);
@@ -331,6 +331,7 @@ main(int argc, char **argv)
     }
   }
 
+  record_to_disk(input_rw.rec, "frame_input.ascii");
   record_free(input_rw.rec);
   input_rw.rec = NULL;
   for (int i = 0; i < MAX_PLAYER; ++i) {
