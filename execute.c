@@ -169,10 +169,10 @@ execute_benchmark()
         functor_invoke(dlfn_function[i].fnctor);
         uint64_t endCall = rdtsc();
         double duration = to_double(endCall - startCall);
-        stats_sample_add(&perfStats[i], duration);
+        stats_sample_add(duration, &perfStats[i]);
         sum += duration;
       }
-      stats_sample_add(&aggregate, sum);
+      stats_sample_add(sum, &aggregate);
     }
 
     printf("--per 10e%d\n", h);

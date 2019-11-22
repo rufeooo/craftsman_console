@@ -280,7 +280,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
     }
 
     for (int i = 0; i < dlfn_used_function; ++i) {
-      stats_sample_add(&perfStats[i], perf[i]);
+      stats_sample_add(perf[i], &perfStats[i]);
     }
 
     for (int i = 0; i < dlfn_used_object; ++i) {
