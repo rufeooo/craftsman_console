@@ -38,9 +38,8 @@ record_realloc(Record_t *rec, int bytesNeeded)
   return true;
 }
 
-bool
-record_append(Record_t *rec, size_t len, const char *input,
-              RecordOffset_t *off)
+bool record_append(const size_t len, const char *input, Record_t *rec,
+                         RecordOffset_t *off)
 {
   const uint32_t byte_offset = off->byte_count;
   const size_t needed = byte_offset + len + 1;

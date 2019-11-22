@@ -23,7 +23,7 @@ typedef struct {
 typedef void (*RecordEvent_t)(size_t strlen, char *str);
 
 LOCAL Record_t *record_alloc();
-LOCAL bool record_append(Record_t *rec, size_t len, const char *input,
+LOCAL bool record_append(const size_t len, const char *input, Record_t *rec,
                          RecordOffset_t *off);
 LOCAL bool record_can_playback(const Record_t *rec,
                                const RecordOffset_t *off);

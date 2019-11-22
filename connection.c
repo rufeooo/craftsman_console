@@ -113,8 +113,8 @@ connection_processing(RecordRW_t recording[static MAX_PLAYER])
 
     ++messages_processed[client_id];
     bytes_processed[client_id] += length;
-    record_append(recording[client_id].rec, *block_len - 1,
-                  &connection_receive_buffer[8], &recording[client_id].write);
+    record_append(*block_len - 1, &connection_receive_buffer[8],
+                  recording[client_id].rec, &recording[client_id].write);
     memmove(connection_receive_buffer, connection_receive_buffer + length,
             sizeof(connection_receive_buffer) - length);
     used_receive_buffer -= length;

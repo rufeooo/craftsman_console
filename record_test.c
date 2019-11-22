@@ -10,7 +10,7 @@ static RecordOffset_t write_offset;
 void
 input_handler(size_t strlen, char *str)
 {
-  record_append(recording, strlen, str, &write_offset);
+  record_append(strlen, str, recording, &write_offset);
 
   printf("%s\n", str);
 }
@@ -26,14 +26,14 @@ main(int argc, char **argv)
 {
   recording = record_alloc();
 
-  record_append(recording, 0, 0, &write_offset);
+  record_append(0, 0, recording, &write_offset);
   RecordOffset_t readOffset = { 0 };
   record_playback(recording, test_handler, &readOffset);
 
-  record_append(recording, 1, "a", &write_offset);
-  record_append(recording, 1, "b", &write_offset);
-  record_append(recording, 1, "c", &write_offset);
-  record_append(recording, 1, "d", &write_offset);
+  record_append(1, "a", recording, &write_offset);
+  record_append(1, "b", recording, &write_offset);
+  record_append(1, "c", recording, &write_offset);
+  record_append(1, "d", recording, &write_offset);
 
   record_debug(recording);
   Record_t *copy = record_clone(recording);

@@ -124,7 +124,7 @@ void
 input_callback(size_t len, char *input)
 {
   if (*input != '!') {
-    record_append(input_rw.rec, len, input, &input_rw.write);
+    record_append(len, input, input_rw.rec, &input_rw.write);
     return;
   }
 
@@ -223,7 +223,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
 
     const int target = loop_write_frame();
     while (target > input_rw.write.command_count) {
-      record_append(input_rw.rec, 0, 0, &input_rw.write);
+      record_append(0, 0, input_rw.rec, &input_rw.write);
     }
 
     int net_status = connection_sync(target, &input_rw, game_record);
@@ -284,8 +284,8 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
     }
 
     for (int i = 0; i < dlfn_used_object; ++i) {
-      record_append(frame_store.rec, dlfn_object[i].bytes,
-                    dlfn_object[i].address, &frame_store.write);
+      record_append(dlfn_object[i].bytes, dlfn_object[i].address,
+                    frame_store.rec, &frame_store.write);
     }
 
     loop_sync();
