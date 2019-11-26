@@ -20,13 +20,13 @@ typedef struct {
   Param_t param[PARAM_COUNT];
 } Functor_t;
 
-INLINE Functor_t
+static INLINE Functor_t
 functor_init(FuncPointer fp)
 {
   return (Functor_t){ .call = fp };
 }
 
-INLINE size_t
+static INLINE size_t
 functor_invoke(Functor_t fnctor)
 {
   return fnctor.call(fnctor.param[0], fnctor.param[1], fnctor.param[2]);

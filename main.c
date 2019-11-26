@@ -190,7 +190,7 @@ notify_callback(int idx, const struct inotify_event *event)
 }
 
 void
-game_simulation(RecordRW_t game_record[static MAX_PLAYER])
+game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
 {
   const int player_count = game_players(game_record);
   Stats_t perfStats[MAX_SYMBOLS];
@@ -202,7 +202,7 @@ game_simulation(RecordRW_t game_record[static MAX_PLAYER])
   execute_init();
   frame_store.rec = record_alloc();
 
-  loop_init(10);
+  loop_init(framerate);
   loop_print_status();
   notify_init(IN_CLOSE_WRITE, ARRAY_LENGTH(watch_dirs), watch_dirs);
   dlfn_init(dlpath);
@@ -309,8 +309,31 @@ main(int argc, char **argv)
   RecordRW_t game_record[MAX_PLAYER] = { 0 };
   const char *host = { 0 };
 
-  bool multiplayer = argc > 1;
-  printf("Multiplayer state %d\n", multiplayer);
+  bool multiplayer = false;
+  uint8_t framerate = 10;
+
+  while (1) {
+    int opt = getopt(argc, argv, "myf:");
+    if (opt == -1)
+      break;
+
+    switch (opt) {
+    case 'y':
+      loop_enable_yield();
+      break;
+    case 'm':
+      multiplayer = true;
+      break;
+    case 'f':
+      framerate = MIN(strtoul(optarg, 0, 0), 255);
+      break;
+    case '?':
+      fprintf(stderr, "Usage: %s [-f framerate] [-m] [-y] etc\n", argv[0]);
+      exit(EXIT_FAILURE);
+      break;
+    }
+  }
+
   if (multiplayer) {
     host = "gamehost.rufe.org";
   }
@@ -320,7 +343,7 @@ main(int argc, char **argv)
   input_rw.rec = record_alloc();
 
   while (!exiting) {
-    game_simulation(game_record);
+    game_simulation(framerate, game_record);
     for (int i = 0; i < MAX_PLAYER; ++i) {
       game_record[i].read = (RecordOffset_t){ 0 };
     }

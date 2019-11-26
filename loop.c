@@ -6,10 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "float.c"
 #include "macro.h"
 #include "rdtsc.h"
+
+// Types
+typedef void (*IdleFn_t)(unsigned);
 
 // Pure functions
 int
@@ -55,10 +59,31 @@ calc_tsc_per_us()
   return double_round_uint64(tscPerSec[TSC_DELTA_COUNT / 2] / USEC_PER_SEC);
 }
 
+static void
+loop_idle(unsigned tsc_unused)
+{
+}
+
+static INLINE uint64_t
+loop_one(const IdleFn_t idle, const uint64_t last_tsc,
+         const uint64_t tsc_step, uint32_t *frame_counter)
+{
+  ++(*frame_counter);
+  for (;;) {
+    uint64_t now = rdtsc();
+    uint64_t tsc_diff = now - last_tsc;
+    if (tsc_diff >= tsc_step) {
+      return MIN(last_tsc + tsc_step, now);
+    }
+    idle(tsc_step - tsc_diff);
+  }
+}
+
 // Memory layout
 static clock_t clock_start;
 static uint64_t tsc_start;
 static uint64_t tsc_per_ms;
+static double usec_per_tsc;
 static uint64_t *tsc_per_frame;
 static uint64_t tsc_per_fast_frame;
 static uint64_t tsc_per_stable_frame;
@@ -66,17 +91,28 @@ static uint64_t tsc;
 static uint32_t frame;
 static uint32_t pause_frame;
 static uint32_t stall_frame;
+static uint32_t sleep_count;
 static bool running;
 static uint32_t run_count;
 static uint32_t input_queue;
 static uint32_t input_queue_max;
+static IdleFn_t idle_func = loop_idle;
 
 // Implementation
+static void
+loop_sleep(unsigned tsc_unused)
+{
+  double rem = to_double(tsc_unused) * usec_per_tsc;
+  ++sleep_count;
+  usleep(double_uint64(rem));
+}
+
 void
 loop_init(uint8_t framerate)
 {
   if (!tsc_per_ms) {
     tsc_per_ms = calc_tsc_per_us() * 1000;
+    usec_per_tsc = 1000.0 * (1.0 / to_double(tsc_per_ms));
     tsc_per_fast_frame = 100 / framerate * tsc_per_ms;
     tsc_per_stable_frame = 1000 / framerate * tsc_per_ms;
     tsc_per_frame = &tsc_per_stable_frame;
@@ -89,6 +125,12 @@ loop_init(uint8_t framerate)
   stall_frame = 0;
   running = true;
   input_queue = input_queue_max = framerate;
+}
+
+void
+loop_enable_yield()
+{
+  idle_func = loop_sleep;
 }
 
 bool
@@ -106,43 +148,19 @@ loop_frame()
 void
 loop_stall()
 {
-  const uint64_t tscPer = *tsc_per_frame;
-  ++stall_frame;
-  for (;;) {
-    uint64_t now = rdtsc();
-    if (now - tsc >= tscPer) {
-      tsc = MIN(tsc + tscPer, now);
-      break;
-    }
-  }
+  tsc = loop_one(idle_func, tsc, *tsc_per_frame, &stall_frame);
 }
 
 void
 loop_pause()
 {
-  const uint64_t tscPer = *tsc_per_frame;
-  ++pause_frame;
-  for (;;) {
-    uint64_t now = rdtsc();
-    if (now - tsc >= tscPer) {
-      tsc = MIN(tsc + tscPer, now);
-      break;
-    }
-  }
+  tsc = loop_one(idle_func, tsc, *tsc_per_frame, &pause_frame);
 }
 
 void
 loop_sync()
 {
-  const uint64_t tscPer = *tsc_per_frame;
-  ++frame;
-  for (;;) {
-    uint64_t now = rdtsc();
-    if (now - tsc >= tscPer) {
-      tsc = MIN(tsc + tscPer, now);
-      break;
-    }
-  }
+  tsc = loop_one(idle_func, tsc, *tsc_per_frame, &frame);
 }
 
 uint32_t
@@ -192,8 +210,8 @@ loop_shutdown()
 void
 loop_print_frame()
 {
-  printf("[ %d frame ] [ %d pause ] [ %d stall ] \n", frame, pause_frame,
-         stall_frame);
+  printf("[ %d frame ] [ %d pause ] [ %d stall ] [ %d sleep_count ]\n", frame,
+         pause_frame, stall_frame, sleep_count);
 }
 
 void
