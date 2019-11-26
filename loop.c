@@ -1,3 +1,4 @@
+#pragma once
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -6,7 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "float.h"
+#include "float.c"
 #include "macro.h"
 #include "rdtsc.h"
 

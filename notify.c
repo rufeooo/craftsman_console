@@ -1,3 +1,5 @@
+#pragma once
+
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -5,9 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/inotify.h>
 #include <unistd.h>
 
-#include "notify.h"
+typedef void (*NotifyEvent_t)(int idx, const struct inotify_event *);
 
 typedef struct {
   int nfds;
@@ -54,8 +57,7 @@ notify_init(uint32_t eventMask, uint32_t argc, const char **argv)
       return false;
     }
 
-    watch_state.wd[i] =
-      inotify_add_watch(pfd.fd, argv[i], eventMask);
+    watch_state.wd[i] = inotify_add_watch(pfd.fd, argv[i], eventMask);
     if (watch_state.wd[i] == -1) {
       watch_error = 5;
       perror("inotify_add_watch");

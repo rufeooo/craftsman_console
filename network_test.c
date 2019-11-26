@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "macro.h"
-#include "network.h"
+#include "network.c"
 
 int
 main(int argc, char **argv)

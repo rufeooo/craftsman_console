@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "notify.h"
+#include "notify.c"
 
 void
 change_event(int idx, const struct inotify_event *ev)
@@ -21,7 +21,7 @@ change_event(int idx, const struct inotify_event *ev)
 }
 
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
   if (argc <= 1) {
     puts("Usage: a.out <watchlist>\n");

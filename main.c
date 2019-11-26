@@ -5,17 +5,12 @@
 #include <unistd.h>
 
 #include "connection.c"
-#include "dlfn.h"
 #include "execute.c"
-#include "float.h"
-#include "functor.h"
-#include "hash.h"
-#include "input.h"
+#include "float.c"
+#include "input.c"
 #include "loop.c"
 #include "macro.h"
-#include "notify.h"
-#include "record.h"
-#include "stats.h"
+#include "notify.c"
 
 static const char *dlpath = "code/feature.so";
 static const char *watch_dirs[] = { "code" };

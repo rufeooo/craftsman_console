@@ -1,3 +1,5 @@
+#pragma once
+
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
@@ -6,7 +8,7 @@
 #include <string.h>
 
 #include "macro.h"
-#include "network.h"
+#include "network.c"
 
 static pthread_attr_t attr;
 static pthread_t thread;

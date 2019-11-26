@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "float.h"
-#include "functor.h"
+#include "float.c"
+#include "functor.c"
 #include "macro.h"
 #include "rdtsc.h"
 

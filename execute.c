@@ -1,16 +1,18 @@
+#pragma once
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "dlfn.h"
-#include "float.h"
-#include "functor.h"
+#include "dlfn.c"
+#include "float.c"
+#include "functor.c"
 #include "global.c"
-#include "hash.h"
+#include "hash.c"
 #include "macro.h"
 #include "rdtsc.h"
-#include "stats.h"
+#include "stats.c"
 
 static uint64_t hash_objects[MAX_SYMBOLS];
 static size_t result[MAX_SYMBOLS];

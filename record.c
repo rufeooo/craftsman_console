@@ -1,15 +1,31 @@
+#pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "macro.h"
-#include "record.h"
+
+typedef struct Record_s Record_t;
+typedef struct {
+  uint32_t byte_count;
+  uint32_t command_count;
+} RecordOffset_t;
+typedef struct {
+  Record_t *rec;
+  RecordOffset_t read;
+  RecordOffset_t write;
+} RecordRW_t;
 
 typedef struct Record_s {
   char *restrict buf;
   uint32_t alloc_bytes;
   uint32_t used_bytes;
 } Record_t;
+
+typedef void (*RecordEvent_t)(size_t strlen, char *str);
 
 Record_t *
 record_alloc()
@@ -38,8 +54,9 @@ record_realloc(Record_t *rec, int bytesNeeded)
   return true;
 }
 
-bool record_append(const size_t len, const char *input, Record_t *rec,
-                         RecordOffset_t *off)
+bool
+record_append(const size_t len, const char *input, Record_t *rec,
+              RecordOffset_t *off)
 {
   const uint32_t byte_offset = off->byte_count;
   const size_t needed = byte_offset + len + 1;

@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "macro.h"
+
 // Prefer determinism over speed
 #pragma STDC FP_CONTRACT OFF
 
@@ -17,10 +19,6 @@ typedef union {
 #else
 #define _d_EXP 1
 #define _d_MAN 0
-#endif
-
-#ifndef INLINE
-#define INLINE __attribute__((always_inline)) inline
 #endif
 
 INLINE float

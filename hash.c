@@ -1,5 +1,7 @@
+#pragma once
 
-#include "hash.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 #define DJB2_CONST 5381
 

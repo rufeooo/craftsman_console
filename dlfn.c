@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,9 +8,21 @@
 #include <dlfcn.h>
 #include <link.h>
 
-#include "dlfn.h"
 #include "macro.h"
+#include "functor.c"
 
+typedef struct {
+  const char *name;
+  Functor_t fnctor;
+} Function_t;
+
+typedef struct {
+  const char *name;
+  void *address;
+  size_t bytes;
+} Object_t;
+
+#define MAX_SYMBOLS 32
 #define MAX_PATH 128
 static char dlname[MAX_PATH];
 static void *dlhandle;

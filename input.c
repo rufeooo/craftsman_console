@@ -1,11 +1,14 @@
+#pragma once
+
 #include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "input.h"
+typedef void (*InputEvent_t)(size_t strlen, char *str);
 
 static char buf[4096] __attribute__((aligned(4096)));
 static const int buf_len = sizeof(buf) - 1;

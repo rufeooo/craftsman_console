@@ -1,3 +1,5 @@
+#pragma once
+
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -5,9 +7,9 @@
 #include <unistd.h>
 
 #include "macro.h"
-#include "network.h"
+#include "network.c"
 #include "network_server.c"
-#include "record.h"
+#include "record.c"
 
 #define MAX_PLAYER 4
 

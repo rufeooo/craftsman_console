@@ -1,8 +1,10 @@
+#pragma once
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "functor.h"
+#include "functor.c"
 
 #define MAX_VARIABLE_NAME 16
 
