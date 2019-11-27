@@ -8,7 +8,8 @@ if [ -z $CC ] || [ "$CC" == "gcc" ]; then
 fi
 echo cloning
 pushd submodule
-git clone git@github.com:rufeooo/test_games.git 
+git clone -q git@github.com:AnthonyBrunasso/test_games.git 
+git checkout 96210d6
 popd
 echo building with $CC
-time $CC submodule/test_games/ecs/cc_ecs_test.cc --std=c++17 -g -shared -fpic -O0 -o code/feature.so
+time $CC cc_ecs_test.cc --std=c++17 -g -shared -fpic -O0 -o ../code/feature.so
