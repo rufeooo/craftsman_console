@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 uint64_t hash_val = 5381;
 

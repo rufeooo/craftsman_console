@@ -3,12 +3,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "macro.h"
 
-typedef struct Record_s Record_t;
+// extern
+extern void *malloc(size_t __size) __THROW __attribute_malloc__ __wur;
+extern void *realloc(void *__ptr,
+                     size_t __size) __THROW __attribute_warn_unused_result__;
+extern void free(void *__ptr) __THROW;
+
+typedef struct Record_s {
+  char *buf;
+  uint32_t alloc_bytes;
+  uint32_t used_bytes;
+} Record_t;
 typedef struct {
   uint32_t byte_count;
   uint32_t command_count;
@@ -18,12 +27,6 @@ typedef struct {
   RecordOffset_t read;
   RecordOffset_t write;
 } RecordRW_t;
-
-typedef struct Record_s {
-  char *restrict buf;
-  uint32_t alloc_bytes;
-  uint32_t used_bytes;
-} Record_t;
 
 typedef void (*RecordEvent_t)(size_t strlen, char *str);
 

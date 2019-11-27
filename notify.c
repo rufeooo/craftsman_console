@@ -5,11 +5,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
 #include <unistd.h>
 
+// extern
+extern void *calloc(size_t __nmemb,
+                    size_t __size) __THROW __attribute_malloc__ __wur;
+
+// Types
 typedef void (*NotifyEvent_t)(int idx, const struct inotify_event *);
 
 typedef struct {

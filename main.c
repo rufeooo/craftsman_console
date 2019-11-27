@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -11,6 +10,11 @@
 #include "loop.c"
 #include "macro.h"
 #include "notify.c"
+
+// extern
+extern unsigned long int strtoul(const char *__restrict __nptr,
+                                 char **__restrict __endptr,
+                                 int __base) __THROW __nonnull((1));
 
 static const char *dlpath = "code/feature.so";
 static const char *watch_dirs[] = { "code" };
@@ -329,8 +333,7 @@ main(int argc, char **argv)
       break;
     case '?':
       fprintf(stderr, "Usage: %s [-f framerate] [-m] [-y] etc\n", argv[0]);
-      exit(EXIT_FAILURE);
-      break;
+      return 1;
     }
   }
 

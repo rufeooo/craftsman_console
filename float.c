@@ -4,9 +4,6 @@
 
 #include "macro.h"
 
-// Prefer determinism over speed
-#pragma STDC FP_CONTRACT OFF
-
 // Composite type: API declarations pass doubles by register
 typedef union {
   double value;

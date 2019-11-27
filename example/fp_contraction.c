@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
 
-#include "../float.h"
+#include "../float.c"
 
 double djb2_double = 5381;
 

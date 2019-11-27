@@ -14,6 +14,13 @@
 #include "rdtsc.h"
 #include "stats.c"
 
+// extern
+extern long int strtol(const char *__restrict __nptr,
+                       char **__restrict __endptr, int __base) __THROW
+  __nonnull((1));
+extern double strtod(const char *__restrict __nptr,
+                     char **__restrict __endptr) __THROW __nonnull((1));
+
 static uint64_t hash_objects[MAX_SYMBOLS];
 static size_t result[MAX_SYMBOLS];
 static int load_param_handle[MAX_SYMBOLS][PARAM_COUNT];

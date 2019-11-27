@@ -4,13 +4,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "float.c"
 #include "macro.h"
 #include "rdtsc.h"
+
+// extern
+typedef int (*__compar_fn_t) (const void *, const void *);
+extern void qsort(void *__base, size_t __nmemb, size_t __size,
+                  __compar_fn_t __compar) __nonnull((1, 4));
 
 // Types
 typedef void (*IdleFn_t)(unsigned);

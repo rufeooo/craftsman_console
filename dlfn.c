@@ -8,8 +8,13 @@
 #include <dlfcn.h>
 #include <link.h>
 
-#include "macro.h"
 #include "functor.c"
+#include "macro.h"
+
+// extern
+typedef int (*__compar_fn_t)(const void *, const void *);
+extern void qsort(void *__base, size_t __nmemb, size_t __size,
+                  __compar_fn_t __compar) __nonnull((1, 4));
 
 typedef struct {
   const char *name;
