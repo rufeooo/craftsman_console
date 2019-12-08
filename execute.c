@@ -173,9 +173,9 @@ execute_benchmark()
     for (int i = 0; i < dlfn_used_function; ++i) {
       double sum = 0;
       for (int j = 0; j < calls; ++j) {
-        uint64_t startCall = __rdtsc();
+        uint64_t startCall = __builtin_ia32_rdtsc();
         functor_invoke(dlfn_function[i].fnctor);
-        uint64_t endCall = __rdtsc();
+        uint64_t endCall = __builtin_ia32_rdtsc();
         double duration = to_double(endCall - startCall);
         stats_sample_add(duration, &perfStats[i]);
         sum += duration;

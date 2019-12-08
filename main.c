@@ -270,9 +270,9 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
     for (int i = 0; i < dlfn_used_function; ++i) {
       call_load_param(i);
 
-      uint64_t startCall = __rdtsc();
+      uint64_t startCall = __builtin_ia32_rdtsc();
       result[i] = functor_invoke(dlfn_function[i].fnctor);
-      uint64_t endCall = __rdtsc();
+      uint64_t endCall = __builtin_ia32_rdtsc();
       perf[i] = to_double(endCall - startCall);
 
       call_store_result(i);
