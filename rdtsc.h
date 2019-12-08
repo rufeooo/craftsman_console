@@ -1,24 +1,25 @@
 
 #pragma once
 
-#if defined(__i386__)
+#ifndef INLINE
+#define INLINE __attribute__((always_inline)) inline
+#endif
 
-static __inline__ unsigned long long rdtsc(void)
+#if defined(__i386__) || defined(__x86_64__)
+
+static INLINE uint64_t rdtsc(void)
 {
-  unsigned long long x;
-     __asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));
-     return x;
+  return __builtin_ia32_rdtsc();
 }
 
-#elif defined(__x86_64__)
+#elif defined(__aarch64__)
 
-static __inline__ unsigned long long rdtsc(void) {
-  unsigned hi, lo;
-  __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-  return ((unsigned long long)lo) | (((unsigned long long)hi) << 32);
+static INLINE uint64_t rdtsc(void)
+{
+  uint64_t virtual_timer_value;
+  asm volatile("mrs %0, cntvct_el0" : "=r"(virtual_timer_value));
+  return virtual_timer_value;
 }
-
-// TODO arm
 
 #else
 
