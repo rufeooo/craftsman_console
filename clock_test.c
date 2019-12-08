@@ -2,13 +2,15 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "rdtsc.h"
+
 unsigned long long tsc_per_sec() {
-  unsigned long long start = __rdtsc();
+  unsigned long long start = rdtsc();
   unsigned long long stop = 0;
 
   clock_t cStart = clock();
   while ((clock() - cStart) * 1000 / CLOCKS_PER_SEC < 1) {
-    stop = __rdtsc();
+    stop = rdtsc();
   }
 
   return stop - start;
@@ -24,7 +26,7 @@ int main() {
   /*for (;;) {
     start = stop;
     clock_t t = clock();
-    stop = __rdtsc();
+    stop = rdtsc();
     printf("%llu\n", stop - start);
     usleep(1000 * 23);
   }*/
