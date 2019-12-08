@@ -227,6 +227,8 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
 
     int net_status = connection_sync(target, &input_rw, game_record);
     switch (net_status) {
+    case CONN_CORRUPT:
+      puts("corrupted record");
     case CONN_TERM:
       loop_halt();
       exiting = true;

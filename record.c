@@ -117,8 +117,10 @@ const char *
 record_read(const Record_t *rec, RecordOffset_t *off, size_t *len)
 {
   uint32_t read_offset = off->byte_count;
-  if (read_offset >= rec->used_bytes)
+  if (read_offset >= rec->used_bytes) {
+    *len = 0;
     return 0;
+  }
 
   const char *cmd = &rec->buf[read_offset];
   size_t length = strlen(cmd);

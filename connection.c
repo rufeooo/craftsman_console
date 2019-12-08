@@ -13,7 +13,7 @@
 
 #define MAX_PLAYER 4
 
-enum { CONN_OK, CONN_TERM, CONN_CHANGE };
+enum { CONN_OK, CONN_TERM, CONN_CHANGE, CONN_CORRUPT };
 
 static char connection_receive_buffer[4096];
 static ssize_t used_receive_buffer;
@@ -158,6 +158,10 @@ connection_sync(uint32_t target_frame, RecordRW_t *input,
   while (target_frame > input->read.command_count) {
     size_t cmd_len;
     const char *cmd = record_read(input->rec, &input->read, &cmd_len);
+
+    if (!cmd)
+      return CONN_CORRUPT;
+
     ++cmd_len;
     ssize_t written = network_write(client_ep.sfd, cmd_len, cmd);
     buffering = buffering | (written != cmd_len);

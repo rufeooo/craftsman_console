@@ -19,10 +19,9 @@ server_message(EndPoint_t *ep, uint32_t n, char message[static n + 1])
   const char player[] = "000";
 
   ++n; // nullterm
-  int written = 0;
-  written += network_write(ep->sfd, sizeof(n), (const char *) &n);
-  written += network_write(ep->sfd, sizeof(player), player);
-  written += network_write(ep->sfd, n, message);
+  network_write(ep->sfd, sizeof(n), (const char *) &n);
+  network_write(ep->sfd, sizeof(player), player);
+  network_write(ep->sfd, n, message);
 }
 
 static uint32_t

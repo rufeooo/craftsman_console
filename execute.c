@@ -319,7 +319,6 @@ execute_variable(size_t len, char *input)
     return;
   }
 
-  const char *value_str = token[2];
   char type = set_value_param(token[2], &var->value);
   var->type = type;
 }
