@@ -5,5 +5,6 @@ fi
 if [ -z $CC ]; then
   CC=`which gcc`
 fi
+OPT=-fno-omit-frame-pointer
 echo building with $CC
-time $CC main.c -std=gnu11 -ldl -lpthread -g -O0 -ffp-contract=off 
+time $CC main.c -std=gnu11 -ldl -lpthread -g -O1 $OPT -ffp-contract=off 
