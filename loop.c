@@ -9,7 +9,6 @@
 
 #include "float.c"
 #include "macro.h"
-#include "rdtsc.h"
 
 // extern
 typedef int (*__compar_fn_t) (const void *, const void *);
@@ -38,13 +37,13 @@ tsc_order_double(const void *lhs, const void *rhs)
 static uint64_t
 calc_tsc_per_us()
 {
-  uint64_t tscDelta[TSC_DELTA_COUNT + 1] = { rdtsc() };
+  uint64_t tscDelta[TSC_DELTA_COUNT + 1] = { __rdtsc() };
   clock_t clockDelta[TSC_DELTA_COUNT + 1] = { clock() };
   for (int i = 1; i < TSC_DELTA_COUNT + 1; ++i) {
     clock_t now;
     do {
       clockDelta[i] = clock();
-      tscDelta[i] = rdtsc();
+      tscDelta[i] = __rdtsc();
     } while ((clockDelta[i] - clockDelta[i - 1]) * 1000 / CLOCKS_PER_SEC < 1);
   }
 
@@ -74,7 +73,7 @@ loop_one(const IdleFn_t idle, const uint64_t last_tsc,
 {
   ++(*frame_counter);
   for (;;) {
-    uint64_t now = rdtsc();
+    uint64_t now = __rdtsc();
     uint64_t tsc_diff = now - last_tsc;
     if (tsc_diff >= tsc_step) {
       return MIN(last_tsc + tsc_step, now);
@@ -121,9 +120,9 @@ loop_init(uint8_t framerate)
     tsc_per_stable_frame = 1000 / framerate * tsc_per_ms;
     tsc_per_frame = &tsc_per_stable_frame;
     clock_start = clock();
-    tsc_start = rdtsc();
+    tsc_start = __rdtsc();
   }
-  tsc = rdtsc();
+  tsc = __rdtsc();
   frame = 0;
   pause_frame = 0;
   stall_frame = 0;

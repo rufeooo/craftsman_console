@@ -5,7 +5,6 @@
 #include "float.c"
 #include "functor.c"
 #include "macro.h"
-#include "rdtsc.h"
 
 #define DATA_COUNT 8
 
@@ -553,7 +552,7 @@ int
 main(int argc, char **argv)
 {
   const unsigned OneMil = 1 * 1000 * 1000;
-  uint64_t start = rdtsc();
+  uint64_t start = __rdtsc();
   Functor_t f = functor_init(test);
   f.param[0].i = 35;
   f.param[2].i = 13;
@@ -566,15 +565,15 @@ main(int argc, char **argv)
   for (int i = 0; i < OneMil; ++i) {
     functor_invoke(f);
   }
-  uint64_t end1 = rdtsc();
+  uint64_t end1 = __rdtsc();
   for (int i = 0; i < OneMil; ++i) {
     test(35, 0, 13);
   }
-  uint64_t end2 = rdtsc();
+  uint64_t end2 = __rdtsc();
   for (int i = 0; i < OneMil; ++i) {
     getenv("USERFOO");
   }
-  uint64_t end3 = rdtsc();
+  uint64_t end3 = __rdtsc();
 
   puts("Performance timing");
   printf("%lu functor %lu indirect %lu direct\n", end1 - start, end2 - end1,
