@@ -241,8 +241,8 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
     CommandPreview_t preview;
     command_preview(player_count, game_record, &preview);
     if (!preview.turn_nearest) {
-      printf("stall [ %d farthest ] [ %d nearest ] \n", preview.turn_farthest,
-             preview.turn_nearest);
+      printf("stall [ %d farthest ] [ %d nearest ] [ %d input queue, +1 ]\n",
+             preview.turn_farthest, preview.turn_nearest, input_queue);
       input_queue = MIN(input_queue + 1, input_queue_max);
       loop_stall();
       continue;
