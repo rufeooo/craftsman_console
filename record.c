@@ -57,7 +57,8 @@ record_realloc(Record_t *rec, int bytesNeeded)
   return true;
 }
 
-bool
+// Record
+static bool
 record_append(const size_t len, const char *input, Record_t *rec,
               RecordOffset_t *off)
 {
@@ -76,7 +77,7 @@ record_append(const size_t len, const char *input, Record_t *rec,
   return true;
 }
 
-bool
+static bool
 record_can_playback(const Record_t *rec, const RecordOffset_t *off)
 {
   uint32_t read_offset = off->byte_count;
@@ -86,7 +87,7 @@ record_can_playback(const Record_t *rec, const RecordOffset_t *off)
   return true;
 }
 
-bool
+static bool
 record_playback(const Record_t *rec, RecordEvent_t handler,
                 RecordOffset_t *off)
 {
@@ -103,7 +104,7 @@ record_playback(const Record_t *rec, RecordEvent_t handler,
   return true;
 }
 
-const char *
+static const char *
 record_peek(const Record_t *rec, const RecordOffset_t *off)
 {
   uint32_t read_offset = off->byte_count;
@@ -113,7 +114,7 @@ record_peek(const Record_t *rec, const RecordOffset_t *off)
   return &rec->buf[read_offset];
 }
 
-const char *
+static const char *
 record_read(const Record_t *rec, RecordOffset_t *off, size_t *len)
 {
   uint32_t read_offset = off->byte_count;
@@ -132,7 +133,7 @@ record_read(const Record_t *rec, RecordOffset_t *off, size_t *len)
   return cmd;
 }
 
-bool
+static bool
 record_read_bytes(const Record_t *rec, size_t len, char buffer[static len],
                   RecordOffset_t *off)
 {
@@ -147,7 +148,7 @@ record_read_bytes(const Record_t *rec, size_t len, char buffer[static len],
   return true;
 }
 
-void
+static void
 record_playback_all(const Record_t *rec, RecordEvent_t handler)
 {
   size_t length = { 0 };
@@ -157,7 +158,7 @@ record_playback_all(const Record_t *rec, RecordEvent_t handler)
   }
 }
 
-bool
+static bool
 record_to_disk(const Record_t *rec, const char *pathname)
 {
   FILE *fd = fopen(pathname, "w+");
@@ -169,19 +170,19 @@ record_to_disk(const Record_t *rec, const char *pathname)
   return true;
 }
 
-size_t
+static size_t
 record_length(const Record_t *rec)
 {
   return rec->used_bytes;
 }
 
-int
+static int
 record_compare(const Record_t *lhs, const Record_t *rhs)
 {
   return memcmp(lhs->buf, rhs->buf, MIN(lhs->used_bytes, rhs->used_bytes));
 }
 
-Record_t *
+static Record_t *
 record_clone(const Record_t *rec)
 {
   Record_t *clone = malloc(sizeof(Record_t));
@@ -191,13 +192,13 @@ record_clone(const Record_t *rec)
   return clone;
 }
 
-void
+static void
 record_reset(Record_t *rec)
 {
   rec->used_bytes = 0;
 }
 
-void
+static void
 record_free(Record_t *rec)
 {
   if (rec) {
@@ -206,7 +207,7 @@ record_free(Record_t *rec)
   FREE(rec);
 }
 
-void
+static void
 record_debug(Record_t *rec)
 {
   printf("%p: %d alloc %d used\n", rec, rec->alloc_bytes, rec->used_bytes);
