@@ -56,13 +56,13 @@ double_uint64(double d)
 INLINE uint32_t
 double_sign(double d)
 {
-  return ((int32_t *) &d)[_d_EXP] & 0x80000000;
+  return ((int32_t *)&d)[_d_EXP] & 0x80000000;
 }
 
 INLINE void
 double_signxor(double *d, double o)
 {
-  ((int32_t *) d)[_d_EXP] ^= double_sign(o);
+  ((int32_t *)d)[_d_EXP] ^= double_sign(o);
 }
 
 INLINE uint64_t
@@ -73,4 +73,3 @@ double_round_uint64(double d)
   uint64_t i = (d + half);
   return i;
 }
-

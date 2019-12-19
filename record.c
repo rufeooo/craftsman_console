@@ -44,12 +44,10 @@ record_alloc()
 static bool
 record_realloc(Record_t *rec, int bytesNeeded)
 {
-  if (bytesNeeded <= 0)
-    return true;
+  if (bytesNeeded <= 0) return true;
 
   char *const newBuf = realloc(rec->buf, rec->alloc_bytes * 2);
-  if (!newBuf)
-    return false;
+  if (!newBuf) return false;
 
   rec->buf = newBuf;
   rec->alloc_bytes *= 2;
@@ -64,8 +62,7 @@ record_append(const size_t len, const char *input, Record_t *rec,
 {
   const uint32_t byte_offset = off->byte_count;
   const size_t needed = byte_offset + len + 1;
-  if (!record_realloc(rec, needed - rec->alloc_bytes))
-    CRASH();
+  if (!record_realloc(rec, needed - rec->alloc_bytes)) CRASH();
 
   rec->used_bytes = MAX(rec->used_bytes, needed);
   memcpy(rec->buf + byte_offset, input, len);
@@ -81,19 +78,16 @@ static bool
 record_can_playback(const Record_t *rec, const RecordOffset_t *off)
 {
   uint32_t read_offset = off->byte_count;
-  if (read_offset >= rec->used_bytes)
-    return false;
+  if (read_offset >= rec->used_bytes) return false;
 
   return true;
 }
 
 static bool
-record_playback(const Record_t *rec, RecordEvent_t handler,
-                RecordOffset_t *off)
+record_playback(const Record_t *rec, RecordEvent_t handler, RecordOffset_t *off)
 {
   uint32_t read_offset = off->byte_count;
-  if (read_offset >= rec->used_bytes)
-    return false;
+  if (read_offset >= rec->used_bytes) return false;
 
   size_t length = strlen(&rec->buf[read_offset]);
   handler(length, &rec->buf[read_offset]);
@@ -108,8 +102,7 @@ static const char *
 record_peek(const Record_t *rec, const RecordOffset_t *off)
 {
   uint32_t read_offset = off->byte_count;
-  if (read_offset >= rec->used_bytes)
-    return 0;
+  if (read_offset >= rec->used_bytes) return 0;
 
   return &rec->buf[read_offset];
 }
@@ -138,8 +131,7 @@ record_read_bytes(const Record_t *rec, size_t len, char buffer[static len],
                   RecordOffset_t *off)
 {
   uint32_t read_offset = off->byte_count;
-  if (read_offset + len >= rec->used_bytes)
-    return false;
+  if (read_offset + len >= rec->used_bytes) return false;
 
   memcpy(buffer, &rec->buf[read_offset], len);
   off->byte_count += len + 1;
@@ -151,7 +143,7 @@ record_read_bytes(const Record_t *rec, size_t len, char buffer[static len],
 static void
 record_playback_all(const Record_t *rec, RecordEvent_t handler)
 {
-  size_t length = { 0 };
+  size_t length = {0};
   for (int i = 0; i < rec->used_bytes; i += (length + 1)) {
     length = strlen(rec->buf + i);
     handler(length, rec->buf + i);
@@ -162,8 +154,7 @@ static bool
 record_to_disk(const Record_t *rec, const char *pathname)
 {
   FILE *fd = fopen(pathname, "w+");
-  if (!fd)
-    return false;
+  if (!fd) return false;
 
   fwrite(rec->buf, rec->used_bytes, 1, fd);
   fclose(fd);
@@ -212,4 +203,3 @@ record_debug(Record_t *rec)
 {
   printf("%p: %d alloc %d used\n", rec, rec->alloc_bytes, rec->used_bytes);
 }
-

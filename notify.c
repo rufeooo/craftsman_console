@@ -50,8 +50,8 @@ notify_init(uint32_t eventMask, uint32_t argc, const char **argv)
   for (uint32_t i = 0; i < argc; ++i) {
     ++watch_state.nfds;
     struct pollfd pfd = {
-      .fd = inotify_init1(IN_NONBLOCK),
-      .events = POLLIN,
+        .fd = inotify_init1(IN_NONBLOCK),
+        .events = POLLIN,
     };
     watch_state.fds[i] = pfd;
 
@@ -78,7 +78,7 @@ bool
 notify_poll(NotifyEvent_t handler)
 {
   static char buf[4096]
-    __attribute__((aligned(__alignof__(struct inotify_event))));
+      __attribute__((aligned(__alignof__(struct inotify_event))));
   const char *event;
   const char *eventEnd;
 
@@ -86,8 +86,7 @@ notify_poll(NotifyEvent_t handler)
   // printf("poll %d\n", poll_num);
 
   if (poll_num == -1) {
-    if (errno == EINTR)
-      return true;
+    if (errno == EINTR) return true;
     watch_error = 6;
     perror("poll");
     return false;
@@ -110,8 +109,7 @@ notify_poll(NotifyEvent_t handler)
     event = buf;
     eventEnd = buf + len;
     while (event < eventEnd) {
-      const struct inotify_event *notify =
-        (const struct inotify_event *) event;
+      const struct inotify_event *notify = (const struct inotify_event *)event;
       handler(i, notify);
       event += sizeof(struct inotify_event) + notify->len;
     }
@@ -132,4 +130,3 @@ notify_shutdown()
   free(watch_state.wd);
   memset(&watch_state, 0, sizeof(watch_state));
 }
-

@@ -10,8 +10,7 @@ int
 main(int argc, char **argv)
 {
   EndPoint_t client_ep;
-  bool configured =
-    network_configure(&client_ep, "gamehost.rufe.org", "4000");
+  bool configured = network_configure(&client_ep, "gamehost.rufe.org", "4000");
   bool connected = network_connect(&client_ep);
   static char readBuffer[4096];
   static uint64_t used_read_buffer;
@@ -26,10 +25,9 @@ main(int argc, char **argv)
 
     if (FLAGGED(events, POLLIN)) {
       ssize_t bytes =
-        network_read(client_ep.sfd, sizeof(readBuffer) - used_read_buffer,
-                     readBuffer + used_read_buffer);
-      if (bytes == -1)
-        break;
+          network_read(client_ep.sfd, sizeof(readBuffer) - used_read_buffer,
+                       readBuffer + used_read_buffer);
+      if (bytes == -1) break;
       used_read_buffer += bytes;
       printf(" poll %zu\n", used_read_buffer);
     }

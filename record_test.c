@@ -27,7 +27,7 @@ main(int argc, char **argv)
   recording = record_alloc();
 
   record_append(0, 0, recording, &write_offset);
-  RecordOffset_t readOffset = { 0 };
+  RecordOffset_t readOffset = {0};
   record_playback(recording, test_handler, &readOffset);
 
   record_append(1, "a", recording, &write_offset);
@@ -41,21 +41,21 @@ main(int argc, char **argv)
   if (record_compare(recording, copy)) {
     puts("clone not equal!");
   }
-  write_offset = (RecordOffset_t){ 0 };
+  write_offset = (RecordOffset_t){0};
 
   record_playback_all(copy, input_handler);
   record_debug(recording);
   record_debug(copy);
 
-  write_offset = (RecordOffset_t){ 0 };
-  readOffset = (RecordOffset_t){ 0 };
+  write_offset = (RecordOffset_t){0};
+  readOffset = (RecordOffset_t){0};
   while (record_playback(copy, input_handler, &readOffset)) {
   }
 
   record_debug(recording);
   record_debug(copy);
 
-  RecordOffset_t copyRead = { 0 };
+  RecordOffset_t copyRead = {0};
   while (record_playback(copy, input_handler, &copyRead)) {
   }
 

@@ -13,9 +13,9 @@
 #define FREE(a) \
   free(a);      \
   a = NULL;
-#define CRASH()                 \
-  do {                          \
-    *((volatile char *) 0) = 1; \
+#define CRASH()                \
+  do {                         \
+    *((volatile char *)0) = 1; \
   } while (true)
 #define FLAGGED(test_bits, set_bit) (test_bits & set_bit)
 #define UNFLAGGED(test_bits, set_bit) (set_bit ^ (test_bits & set_bit))

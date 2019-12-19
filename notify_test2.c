@@ -6,18 +6,12 @@ void
 change_event(int idx, const struct inotify_event *ev)
 {
   printf("\nchange_event %d %d %s\n", idx, ev->mask, ev->name);
-  if (ev->mask & IN_OPEN)
-    printf("IN_OPEN: ");
-  if (ev->mask & IN_DELETE_SELF)
-    printf("IN_DELETE_SELF: ");
-  if (ev->mask & IN_DELETE)
-    printf("IN_DELETE: ");
-  if (ev->mask & IN_CLOSE_NOWRITE)
-    printf("IN_CLOSE_NOWRITE: ");
-  if (ev->mask & IN_CLOSE_WRITE)
-    printf("IN_CLOSE_WRITE: ");
-  if (ev->mask & IN_IGNORED)
-    printf("IN_IGNORED: ");
+  if (ev->mask & IN_OPEN) printf("IN_OPEN: ");
+  if (ev->mask & IN_DELETE_SELF) printf("IN_DELETE_SELF: ");
+  if (ev->mask & IN_DELETE) printf("IN_DELETE: ");
+  if (ev->mask & IN_CLOSE_NOWRITE) printf("IN_CLOSE_NOWRITE: ");
+  if (ev->mask & IN_CLOSE_WRITE) printf("IN_CLOSE_WRITE: ");
+  if (ev->mask & IN_IGNORED) printf("IN_IGNORED: ");
 }
 
 int

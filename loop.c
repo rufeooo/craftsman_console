@@ -12,7 +12,7 @@
 #include "rdtsc.h"
 
 // extern
-typedef int (*__compar_fn_t) (const void *, const void *);
+typedef int (*__compar_fn_t)(const void *, const void *);
 extern void qsort(void *__base, size_t __nmemb, size_t __size,
                   __compar_fn_t __compar) __nonnull((1, 4));
 
@@ -23,8 +23,8 @@ typedef void (*IdleFn_t)(unsigned);
 int
 tsc_order_double(const void *lhs, const void *rhs)
 {
-  double lhv = *(double *) lhs;
-  double rhv = *(double *) rhs;
+  double lhv = *(double *)lhs;
+  double rhv = *(double *)rhs;
 
   if (lhv < rhv)
     return -1;
@@ -38,8 +38,8 @@ tsc_order_double(const void *lhs, const void *rhs)
 static uint64_t
 calc_tsc_per_us()
 {
-  uint64_t tscDelta[TSC_DELTA_COUNT + 1] = { rdtsc() };
-  clock_t clockDelta[TSC_DELTA_COUNT + 1] = { clock() };
+  uint64_t tscDelta[TSC_DELTA_COUNT + 1] = {rdtsc()};
+  clock_t clockDelta[TSC_DELTA_COUNT + 1] = {clock()};
   for (int i = 1; i < TSC_DELTA_COUNT + 1; ++i) {
     clock_t now;
     do {
@@ -52,8 +52,8 @@ calc_tsc_per_us()
   for (int i = 0; i < TSC_DELTA_COUNT; ++i) {
     uint64_t clock_delta = (clockDelta[i + 1] - clockDelta[i]);
     uint64_t tsc_delta = tscDelta[i + 1] - tscDelta[i];
-    tscPerSec[i] = to_double(CLOCKS_PER_SEC) * to_double(tsc_delta)
-                   / to_double(clock_delta);
+    tscPerSec[i] = to_double(CLOCKS_PER_SEC) * to_double(tsc_delta) /
+                   to_double(clock_delta);
   }
 
   qsort(tscPerSec, TSC_DELTA_COUNT, ARRAY_MEMBER_SIZE(tscPerSec),
@@ -69,8 +69,8 @@ loop_idle(unsigned tsc_unused)
 }
 
 static INLINE uint64_t
-loop_one(const IdleFn_t idle, const uint64_t last_tsc,
-         const uint64_t tsc_step, uint32_t *frame_counter)
+loop_one(const IdleFn_t idle, const uint64_t last_tsc, const uint64_t tsc_step,
+         uint32_t *frame_counter)
 {
   ++(*frame_counter);
   for (;;) {
@@ -242,4 +242,3 @@ loop_print_status()
 
   printf("%" PRIu64 " ms elapsed by clock\n", elapsedMs);
 }
-

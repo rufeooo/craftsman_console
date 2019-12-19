@@ -33,8 +33,7 @@ input_poll(InputEvent_t handler)
   int poll_num = poll(fds, nfds, 0);
 
   if (poll_num == -1) {
-    if (errno == EINTR)
-      return true;
+    if (errno == EINTR) return true;
 
     perror("poll");
     return false;

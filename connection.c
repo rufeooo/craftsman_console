@@ -33,8 +33,8 @@ digit_atoi(char c)
 static int
 fixed_atoi(char str[static 3])
 {
-  return digit_atoi(str[0]) * 100 + digit_atoi(str[1]) * 10
-         + digit_atoi(str[2]);
+  return digit_atoi(str[0]) * 100 + digit_atoi(str[1]) * 10 +
+         digit_atoi(str[2]);
 }
 
 int
@@ -50,8 +50,7 @@ connection_init(const char *host)
   bool connected = network_connect(&client_ep);
 
   while (!network_ready(&client_ep)) {
-    if (client_ep.disconnected)
-      return 0;
+    if (client_ep.disconnected) return 0;
 
     puts("Waiting for connection");
     usleep(300 * 1000);
@@ -63,8 +62,7 @@ connection_init(const char *host)
 bool
 connection_io()
 {
-  if (client_ep.disconnected)
-    return false;
+  if (client_ep.disconnected) return false;
 
   int32_t events = network_poll(&client_ep, POLLIN | POLLOUT | POLLERR, 0);
   if ((events & POLLOUT) == 0) {
@@ -74,8 +72,8 @@ connection_io()
 
   if (events & POLLIN) {
     ssize_t bytes = network_read(
-      client_ep.sfd, sizeof(connection_receive_buffer) - used_receive_buffer,
-      connection_receive_buffer + used_receive_buffer);
+        client_ep.sfd, sizeof(connection_receive_buffer) - used_receive_buffer,
+        connection_receive_buffer + used_receive_buffer);
     bytes_received += bytes;
     if (bytes == -1) {
       return false;
@@ -95,18 +93,16 @@ bool
 connection_processing(RecordRW_t recording[static MAX_PLAYER])
 {
   while (used_receive_buffer >= 8) {
-    int *block_len = (int *) connection_receive_buffer;
+    int *block_len = (int *)connection_receive_buffer;
     int length = 8 + *block_len;
-    if (used_receive_buffer < length)
-      break;
+    if (used_receive_buffer < length) break;
 
     if (length > 9) {
       printf("Received big message %d: %s %s\n", length,
              &connection_receive_buffer[4], &connection_receive_buffer[8]);
     }
     int client_id = fixed_atoi(&connection_receive_buffer[4]);
-    if (client_id >= MAX_PLAYER)
-      CRASH();
+    if (client_id >= MAX_PLAYER) CRASH();
 
     if (!recording[client_id].rec) {
       recording[client_id].rec = record_alloc();
@@ -130,8 +126,8 @@ connection_print_stats()
 {
   puts("--net stats");
   printf(
-    "[ Received_bytes %d ]  [ unprocessed %zu ] [write buffering state %d]\n",
-    bytes_received, used_receive_buffer, buffering);
+      "[ Received_bytes %d ]  [ unprocessed %zu ] [write buffering state %d]\n",
+      bytes_received, used_receive_buffer, buffering);
   for (int i = 0; i < MAX_PLAYER; ++i) {
     printf("player %d: %d messages_processed %d bytes\n", i,
            messages_processed[i], bytes_processed[i]);
@@ -159,8 +155,7 @@ connection_sync(uint32_t target_frame, RecordRW_t *input,
     size_t cmd_len;
     const char *cmd = record_read(input->rec, &input->read, &cmd_len);
 
-    if (!cmd)
-      return CONN_CORRUPT;
+    if (!cmd) return CONN_CORRUPT;
 
     ++cmd_len;
     ssize_t written = network_write(client_ep.sfd, cmd_len, cmd);
@@ -177,4 +172,3 @@ connection_term()
   endpoint_term(&server_ep);
   server_term();
 }
-

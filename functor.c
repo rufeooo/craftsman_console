@@ -23,7 +23,7 @@ typedef struct {
 static INLINE Functor_t
 functor_init(FuncPointer fp)
 {
-  return (Functor_t){ .call = fp };
+  return (Functor_t){.call = fp};
 }
 
 static INLINE size_t

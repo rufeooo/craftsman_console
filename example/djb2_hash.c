@@ -1,6 +1,6 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stddef.h>
 
 uint64_t hash_val = 5381;
 
@@ -12,4 +12,3 @@ hash_add(int val)
 
   return hash_val;
 }
-

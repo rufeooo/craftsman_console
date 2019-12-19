@@ -64,7 +64,7 @@ add_sample(double newValue, Stats_t *accum)
 void
 stats_init(Stats_t *accum)
 {
-  *accum = (Stats_t){ .min = ~0u };
+  *accum = (Stats_t){.min = ~0u};
 }
 
 void

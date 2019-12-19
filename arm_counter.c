@@ -3,8 +3,9 @@
 
 #include "rdtsc.h"
 
-int main()
+int
+main()
 {
-	printf("%lu\n", rdtsc());
-	return 0;
+  printf("%lu\n", rdtsc());
+  return 0;
 }

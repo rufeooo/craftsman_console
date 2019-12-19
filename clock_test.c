@@ -4,7 +4,9 @@
 
 #include "rdtsc.h"
 
-unsigned long long tsc_per_sec() {
+unsigned long long
+tsc_per_sec()
+{
   unsigned long long start = rdtsc();
   unsigned long long stop = 0;
 
@@ -16,7 +18,9 @@ unsigned long long tsc_per_sec() {
   return stop - start;
 }
 
-int main() {
+int
+main()
+{
   for (;;) {
     unsigned long long tps = tsc_per_sec();
 

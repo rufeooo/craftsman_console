@@ -9,9 +9,9 @@ void
 input_event(size_t strlen, char *str)
 {
   switch (*str) {
-  case 'q':
-    exiting = true;
-    return;
+    case 'q':
+      exiting = true;
+      return;
   }
 
   ++strlen;
@@ -25,8 +25,7 @@ main(int argc, char **argv)
   EndPoint_t server_ep;
 
   input_init();
-  if (!network_socketpair(&client_ep, &server_ep))
-    return 1;
+  if (!network_socketpair(&client_ep, &server_ep)) return 1;
 
   server_init(&server_ep);
   while (!exiting) {
@@ -37,8 +36,8 @@ main(int argc, char **argv)
       static char receive_buffer[4096];
       const uint32_t header_bytes = 8;
       int bytes_read = network_read(
-        client_ep.sfd, sizeof(receive_buffer) - used_receive_buffer,
-        &receive_buffer[used_receive_buffer]);
+          client_ep.sfd, sizeof(receive_buffer) - used_receive_buffer,
+          &receive_buffer[used_receive_buffer]);
       printf("client bytes_read %d\n", bytes_read);
       if (bytes_read == 0 && FLAGGED(revents, POLLHUP)) {
         puts("client pollhup");
@@ -49,7 +48,7 @@ main(int argc, char **argv)
         continue;
       }
 
-      uint32_t *block_len = (uint32_t *) receive_buffer;
+      uint32_t *block_len = (uint32_t *)receive_buffer;
       if (*block_len > sizeof(receive_buffer) - header_bytes) {
         printf("client buffer exhausted on block_len %u\n", *block_len);
         break;
@@ -76,4 +75,3 @@ main(int argc, char **argv)
 
   return 0;
 }
-

@@ -12,7 +12,7 @@ main()
   frame_store.rec = record_alloc();
   for (int i = 0; i < 10; ++i) {
     bytes = i;
-    record_append(sizeof(bytes), (void *) &bytes, frame_store.rec,
+    record_append(sizeof(bytes), (void *)&bytes, frame_store.rec,
                   &frame_store.write);
   }
 
@@ -20,8 +20,8 @@ main()
          record_length(frame_store.rec));
 
   for (int i = 0; i < 11; ++i) {
-    bool r = record_read_bytes(frame_store.rec, sizeof(bytes),
-                               (void *) &bytes, &frame_store.read);
+    bool r = record_read_bytes(frame_store.rec, sizeof(bytes), (void *)&bytes,
+                               &frame_store.read);
     printf("r %d: %zx\n", r, bytes);
   }
 

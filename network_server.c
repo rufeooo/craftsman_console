@@ -18,8 +18,8 @@ server_message(EndPoint_t *ep, uint32_t n, char message[static n + 1])
 {
   const char player[] = "000";
 
-  ++n; // nullterm
-  network_write(ep->sfd, sizeof(n), (const char *) &n);
+  ++n;  // nullterm
+  network_write(ep->sfd, sizeof(n), (const char *)&n);
   network_write(ep->sfd, sizeof(player), player);
   network_write(ep->sfd, n, message);
 }
@@ -48,10 +48,10 @@ static bool
 server_halt(ssize_t bytes, bool pollhup)
 {
   switch (bytes) {
-  case -1:
-    return !errno_would_block();
-  case 0:
-    return pollhup;
+    case -1:
+      return !errno_would_block();
+    case 0:
+      return pollhup;
   }
 
   return false;
@@ -64,7 +64,7 @@ server_routine(void *arg)
   static char receive_buffer[SERVER_RECV_MAX];
   static uint32_t used_receive_buffer;
   static uint64_t bytes_received;
-  EndPoint_t ep = *(EndPoint_t *) arg;
+  EndPoint_t ep = *(EndPoint_t *)arg;
 
   while (!ep.disconnected) {
     int32_t events = network_poll(&ep, POLLIN | POLLERR, 10);
@@ -76,8 +76,8 @@ server_routine(void *arg)
 
     if (FLAGGED(events, POLLIN)) {
       ssize_t bytes =
-        network_read(ep.sfd, sizeof(receive_buffer) - used_receive_buffer,
-                     receive_buffer + used_receive_buffer);
+          network_read(ep.sfd, sizeof(receive_buffer) - used_receive_buffer,
+                       receive_buffer + used_receive_buffer);
 
       // Hangup after all bytes are drained
       if (server_halt(bytes, FLAGGED(events, POLLHUP))) {
@@ -90,7 +90,7 @@ server_routine(void *arg)
       used_receive_buffer += bytes;
 
       ssize_t processed_bytes =
-        server_process(&ep, used_receive_buffer, receive_buffer);
+          server_process(&ep, used_receive_buffer, receive_buffer);
       if (processed_bytes) {
         memmove(receive_buffer, &receive_buffer[processed_bytes],
                 used_receive_buffer - processed_bytes);
@@ -107,8 +107,7 @@ void
 server_init(EndPoint_t *ep)
 {
   static EndPoint_t init_ep;
-  if (thread)
-    return;
+  if (thread) return;
 
   init_ep = *ep;
   pthread_attr_init(&attr);
@@ -118,12 +117,10 @@ server_init(EndPoint_t *ep)
 void
 server_term()
 {
-  if (!thread)
-    return;
+  if (!thread) return;
 
   void *thread_ret;
   pthread_join(thread, &thread_ret);
   printf("thread returned: %p\n", thread_ret);
   pthread_attr_destroy(&attr);
 }
-

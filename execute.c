@@ -17,7 +17,7 @@
 // extern
 extern long int strtol(const char *__restrict __nptr,
                        char **__restrict __endptr, int __base) __THROW
-  __nonnull((1));
+    __nonnull((1));
 extern double strtod(const char *__restrict __nptr,
                      char **__restrict __endptr) __THROW __nonnull((1));
 
@@ -46,8 +46,7 @@ copy(Param_t *dst, const Param_t *src)
 }
 
 int
-tokenize(size_t len, char *input, size_t token_count,
-         char *token[token_count])
+tokenize(size_t len, char *input, size_t token_count, char *token[token_count])
 {
   char *iter = input;
   char *end = input + len;
@@ -67,8 +66,7 @@ tokenize(size_t len, char *input, size_t token_count,
 int
 add_result_func(Functor_t fnctor)
 {
-  if (used_result_func >= MAX_FUNC)
-    return -1;
+  if (used_result_func >= MAX_FUNC) return -1;
 
   int idx = used_result_func;
   result_func[idx] = fnctor;
@@ -99,9 +97,9 @@ set_load_param(const char *str_value, Param_t *p)
 
   var->type = 'i';
   Functor_t fnctor = {
-    .call = copy,
-    .param[0].p = p,
-    .param[1].p = &var->value,
+      .call = copy,
+      .param[0].p = p,
+      .param[1].p = &var->value,
   };
   int idx = add_result_func(fnctor);
   printf("%d: Store into %p variable %s\n", idx, p, str_value);
@@ -119,9 +117,9 @@ set_store_param(const char *str_value, size_t *result_ptr)
 
   var->type = 'i';
   Functor_t fnctor = {
-    .call = copy,
-    .param[0].p = &var->value,
-    .param[1].p = result_ptr,
+      .call = copy,
+      .param[0].p = &var->value,
+      .param[1].p = result_ptr,
   };
   int idx = add_result_func(fnctor);
   printf("%d: Store into variable %s ptr %p\n", idx, str_value, result_ptr);
@@ -137,7 +135,7 @@ execute_init()
   used_result_func = 0;
   memset(load_param_handle, 0, sizeof(load_param_handle));
 
-  Functor_t np = { .call = noop };
+  Functor_t np = {.call = noop};
   add_result_func(np);
 }
 
@@ -193,8 +191,7 @@ execute_benchmark()
     }
     puts("");
 
-    if (aggregate.max > 10000000.0)
-      break;
+    if (aggregate.max > 10000000.0) break;
 
     calls *= 10;
   }
@@ -211,8 +208,7 @@ execute_simulation(size_t len, char *input)
   char *token[TOKEN_COUNT];
   int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
-  if (token_count == 1)
-    return SIMULATION_MAX;
+  if (token_count == 1) return SIMULATION_MAX;
 
   uint64_t val = strtol(token[1], 0, 0);
   return val;
@@ -233,26 +229,21 @@ execute_parameter(size_t len, char *input)
 
   int matched = 0;
   for (int fi = 0; fi < dlfn_used_function; ++fi) {
-    const char *filter =
-      token[1][0] == '*' ? dlfn_function[fi].name : token[1];
+    const char *filter = token[1][0] == '*' ? dlfn_function[fi].name : token[1];
 
-    if (strcmp(filter, dlfn_function[fi].name))
-      continue;
+    if (strcmp(filter, dlfn_function[fi].name)) continue;
 
     ++matched;
     for (int pi = 0; pi < PARAM_COUNT; ++pi) {
       int token_index = pi + 2;
-      if (token_index >= token_count)
-        break;
+      if (token_index >= token_count) break;
 
       int func = set_load_param(token[token_index],
                                 &dlfn_function[fi].fnctor.param[pi]);
       load_param_handle[fi][pi] = func;
-      if (func > 0)
-        continue;
+      if (func > 0) continue;
 
-      set_value_param(token[token_index],
-                      &dlfn_function[fi].fnctor.param[pi]);
+      set_value_param(token[token_index], &dlfn_function[fi].fnctor.param[pi]);
     }
   }
 
@@ -296,7 +287,7 @@ execute_hash(size_t len, char *input)
   uint64_t hash_val = memhash(0, 0);
   for (int i = 0; i < dlfn_used_object; ++i) {
     hash_val =
-      memhash_cont(hash_val, dlfn_object[i].address, dlfn_object[i].bytes);
+        memhash_cont(hash_val, dlfn_object[i].address, dlfn_object[i].bytes);
     hash_objects[i] = hash_val;
     printf("Hashval %s: %lu\n", dlfn_object[i].name, hash_val);
   }
@@ -368,9 +359,9 @@ execute_mutation(size_t len, char *input)
     return;
   }
 
-  Op_t op = { .operand_type[0] = 'p',
-              .operand[0].cp = lhv,
-              .operator[0] = token[2][0] };
+  Op_t op = {.operand_type[0] = 'p',
+             .operand[0].cp = lhv,
+             .operator[0] = token[2][0] };
 
   if (rhv) {
     op.operand_type[1] = 'p';
@@ -390,8 +381,7 @@ execute_condition(size_t len, char *input)
   int token_count = tokenize(len, input, TOKEN_COUNT, token);
 
   if (token_count < TOKEN_COUNT) {
-    puts(
-      "Usage: condition <variable|constant> [<,>,+,-] <variable|constant>");
+    puts("Usage: condition <variable|constant> [<,>,+,-] <variable|constant>");
     return;
   }
 
@@ -417,4 +407,3 @@ execute_condition(size_t len, char *input)
   char result_type = perform_op(&op, &result);
   printf("[ result_type %c ]: %f %zu\n", result_type, result.d, result.i);
 }
-
