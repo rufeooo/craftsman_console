@@ -248,7 +248,7 @@ dlfn_close()
 
   memset(dlfn_function, 0, sizeof(dlfn_function));
   dlfn_used_function = 0;
-  memset(dlfn_object, 0, sizeof(dlfn_function));
+  memset(dlfn_object, 0, sizeof(dlfn_object));
   dlfn_used_object = 0;
   int result = dlclose(dlhandle);
   if (result != 0) puts(dlerror());
