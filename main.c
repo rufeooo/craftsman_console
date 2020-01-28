@@ -278,7 +278,7 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
     }
 
     for (int i = 0; i < dlfn_used_function; ++i) {
-      stats_sample_add(perf[i], &perfStats[i]);
+      stats_add(perf[i], &perfStats[i]);
     }
 
     for (int i = 0; i < dlfn_used_object; ++i) {
@@ -293,7 +293,7 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
     printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
            dlfn_function[i].name, stats_min(&perfStats[i]),
            stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
-           100.0 * stats_rs_dev(&perfStats[i]));
+           100.0 * stats_unbiased_rs_dev(&perfStats[i]));
   }
   puts("");
   loop_print_status();

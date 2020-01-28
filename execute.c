@@ -176,10 +176,10 @@ execute_benchmark()
         functor_invoke(dlfn_function[i].fnctor);
         uint64_t endCall = rdtsc();
         double duration = to_double(endCall - startCall);
-        stats_sample_add(duration, &perfStats[i]);
+        stats_add(duration, &perfStats[i]);
         sum += duration;
       }
-      stats_sample_add(sum, &aggregate);
+      stats_add(sum, &aggregate);
     }
 
     printf("--per 10e%d\n", h);
@@ -187,7 +187,7 @@ execute_benchmark()
       printf("%-20s\t(%5.2e, %5.2e) range\t%5.2e mean ± %4.02f%%\t\n",
              dlfn_function[i].name, stats_min(&perfStats[i]),
              stats_max(&perfStats[i]), stats_mean(&perfStats[i]),
-             100.0 * stats_rs_dev(&perfStats[i]));
+             100.0 * stats_unbiased_rs_dev(&perfStats[i]));
     }
     puts("");
 

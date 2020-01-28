@@ -1,6 +1,6 @@
 #pragma once
 
-#include "macro.h"
+#include <math.h>
 
 typedef struct {
   double moments[3];
@@ -9,7 +9,7 @@ typedef struct {
 } Stats_t;
 
 double
-stats_sample_count(const Stats_t *accum)
+stats_count(const Stats_t *accum)
 {
   return accum->moments[0];
 }
@@ -27,10 +27,10 @@ stats_variance(const Stats_t *accum)
 }
 
 double
-stats_rs_dev(const Stats_t *accum)
+stats_unbiased_rs_dev(const Stats_t *accum)
 {
-  double mean = stats_mean(accum);
-  return stats_variance(accum) / (mean * mean);
+  return sqrt(accum->moments[2] / (accum->moments[1] * accum->moments[1] *
+                                   (accum->moments[0] - 1)));
 }
 
 double
@@ -43,22 +43,6 @@ double
 stats_max(const Stats_t *accum)
 {
   return accum->max;
-}
-
-static void
-add_sample(double newValue, Stats_t *accum)
-{
-  // Calculate
-  double n = stats_sample_count(accum);
-  double n1 = n + 1.0;
-  double delta = newValue - stats_mean(accum);
-  double delta1 = delta / n1;
-  double delta2 = delta1 * delta * n;
-
-  // Apply
-  accum->moments[0] += 1.0;
-  accum->moments[1] += delta1;
-  accum->moments[2] += delta2;
 }
 
 void
@@ -76,9 +60,21 @@ stats_init_array(unsigned n, Stats_t stats[static n])
 }
 
 void
-stats_sample_add(double sample, Stats_t *accum)
+stats_add(double sample, Stats_t *accum)
 {
-  add_sample(sample, accum);
-  accum->max = MAX(sample, accum->max);
-  accum->min = MIN(sample, accum->min);
+  // Calculate
+  double n = accum->moments[0];
+  double n1 = n + 1.0;
+  double diff_from_mean = sample - accum->moments[1];
+  double mean_accum = diff_from_mean / n1;
+  double delta2 = mean_accum * diff_from_mean * n;
+
+  // Apply
+  accum->moments[0] += 1.0;
+  accum->moments[1] += mean_accum;
+  accum->moments[2] += delta2;
+
+  // Min/max
+  accum->max = fmax(sample, accum->max);
+  accum->min = fmin(sample, accum->min);
 }

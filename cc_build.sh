@@ -7,4 +7,4 @@ if [ -z $CC ]; then
 fi
 OPT=-fno-omit-frame-pointer
 echo building with $CC
-time $CC main.c -std=gnu11 -ldl -lpthread -g -O1 $OPT -ffp-contract=off 
+time $CC main.c -std=gnu11 -lm -ldl -lpthread -g -O1 $OPT -ffp-contract=off 
