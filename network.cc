@@ -162,8 +162,9 @@ network_write(int fd, int64_t n, const char buffer[n])
 int32_t
 network_poll(EndPoint_t *ep, short events, int timeout_ms)
 {
-  struct pollfd fds = {.fd = ep->sfd,
-                       .events = (POLLIN | POLLOUT | POLLERR) & events};
+  struct pollfd fds;
+  fds.fd = ep->sfd;
+  fds.events = (POLLIN | POLLOUT | POLLERR) & events;
   int poll_num = poll(&fds, 1, timeout_ms);
 
   if (poll_num == -1) {

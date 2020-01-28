@@ -1,6 +1,6 @@
-#include "input.c"
-#include "network.c"
-#include "network_server.c"
+#include "input.cc"
+#include "network.cc"
+#include "network_server.cc"
 
 static bool exiting;
 static EndPoint_t client_ep;

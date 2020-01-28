@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "macro.h"
-#include "network.c"
+#include "network.cc"
 
 static pthread_attr_t attr;
 static pthread_t thread;

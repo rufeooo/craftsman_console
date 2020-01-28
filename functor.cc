@@ -20,17 +20,18 @@ typedef struct {
   Param_t param[PARAM_COUNT];
 } Functor_t;
 
-static INLINE Functor_t
+  static INLINE Functor_t
 functor_init(FuncPointer fp)
 {
   return (Functor_t){.call = fp};
 }
 
-static INLINE size_t
+  static INLINE size_t
 functor_invoke(Functor_t fnctor)
 {
-  return fnctor.call(fnctor.param[0], fnctor.param[1], fnctor.param[2]);
+  // return fnctor.call(fnctor.param[0], fnctor.param[1], fnctor.param[2]);
 }
 
 _Static_assert(sizeof(size_t) == sizeof(void *),
-               "Param_t must used bindings of the same width.");
+    "Param_t must used bindings of the same width.");
+

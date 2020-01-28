@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -34,13 +35,13 @@ notify_last_error()
 bool
 notify_init(uint32_t eventMask, uint32_t argc, const char **argv)
 {
-  watch_state.fds = calloc(argc, sizeof(struct pollfd));
+  watch_state.fds = (struct pollfd *)calloc(argc, sizeof(struct pollfd));
   if (!watch_state.fds) {
     watch_error = 2;
     return false;
   }
 
-  watch_state.wd = calloc(argc, sizeof(int));
+  watch_state.wd = (int *)calloc(argc, sizeof(int));
   if (!watch_state.wd) {
     watch_error = 3;
     return false;

@@ -3,13 +3,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "connection.c"
-#include "execute.c"
-#include "float.c"
-#include "input.c"
-#include "loop.c"
+#include "connection.cc"
+#include "execute.cc"
+#include "float.cc"
+#include "input.cc"
+#include "loop.cc"
 #include "macro.h"
-#include "notify.c"
+#include "notify.cc"
 
 // extern
 extern unsigned long int strtoul(const char *__restrict __nptr,
@@ -56,7 +56,8 @@ command_frame(size_t player_count, RecordRW_t recording[player_count],
               CommandFrame_t *out_state)
 {
   static char buffer[FRAME_BUF_LEN];
-  CommandFrame_t ret_state = {.turn_command_count = player_count};
+  CommandFrame_t ret_state;
+  ret_state.turn_command_count = player_count;
   char *buffer_write = buffer;
   char *buffer_end = buffer + FRAME_BUF_LEN;
 
@@ -79,7 +80,7 @@ command_frame(size_t player_count, RecordRW_t recording[player_count],
 }
 
 uint32_t
-game_players(RecordRW_t recording[static MAX_PLAYER])
+game_players(RecordRW_t recording[MAX_PLAYER])
 {
   uint32_t count = 0;
   for (int i = 0; i < MAX_PLAYER; ++i) {
@@ -192,7 +193,7 @@ notify_callback(int idx, const struct inotify_event *event)
 }
 
 void
-game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
+game_simulation(uint8_t framerate, RecordRW_t game_record[MAX_PLAYER])
 {
   const int player_count = game_players(game_record);
   Stats_t perfStats[MAX_SYMBOLS];
@@ -282,8 +283,9 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
     }
 
     for (int i = 0; i < dlfn_used_object; ++i) {
-      record_append(dlfn_object[i].bytes, dlfn_object[i].address,
-                    frame_store.rec, &frame_store.write);
+      record_append((size_t)dlfn_object[i].bytes,
+                    (const char *)dlfn_object[i].address, frame_store.rec,
+                    &frame_store.write);
     }
 
     loop_sync();

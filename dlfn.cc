@@ -4,11 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define __USE_GNU
 #include <dlfcn.h>
 #include <link.h>
 
-#include "functor.c"
+#include "functor.cc"
 #include "macro.h"
 
 // extern
@@ -41,8 +40,8 @@ int dlfn_used_object;
 int
 symbol_order(const void *lhs, const void *rhs)
 {
-  const Function_t *lhv = lhs;
-  const Function_t *rhv = rhs;
+  const Function_t *lhv = (const Function_t *)lhs;
+  const Function_t *rhv = (const Function_t *)rhs;
   size_t lhfn = (size_t)lhv->fnctor.call;
   size_t rhfn = (size_t)rhv->fnctor.call;
 
@@ -64,8 +63,8 @@ sort_functions()
 int
 object_order(const void *lhs, const void *rhs)
 {
-  const Object_t *lhv = lhs;
-  const Object_t *rhv = rhs;
+  const Object_t *lhv = (const Object_t *)lhs;
+  const Object_t *rhv = (const Object_t *)rhs;
 
   if (lhv->address < rhv->address)
     return -1;
@@ -140,26 +139,27 @@ dlfn_get_object(const char *name)
 static void
 parse_symtab(void *addr, void *symtab, void *strtab)
 {
-  const char *read_strtab = strtab;
-  ElfW(Sym *) iter = symtab;
+  const char *read_strtab = (const char *)strtab;
+  ElfW(Sym *) iter = (ElfW(Sym *))symtab;
   for (; (void *)iter < strtab; ++iter) {
     if (ELF64_ST_TYPE(iter->st_info) != STT_FUNC) continue;
     if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL) continue;
     if (iter->st_size == 0) continue;
-    Function_t s = {.name = &read_strtab[iter->st_name],
-                    .fnctor = functor_init((void *)(addr + iter->st_value))};
+    Function_t s = {
+        .name = &read_strtab[iter->st_name],
+        .fnctor = functor_init((FuncPointer)((char *)addr + iter->st_value))};
 
     if (dlfn_used_function >= MAX_SYMBOLS) break;
     dlfn_function[dlfn_used_function++] = s;
   }
 
-  iter = symtab;
+  iter = (ElfW(Sym *))symtab;
   for (; (void *)iter < strtab; ++iter) {
     if (ELF64_ST_TYPE(iter->st_info) != STT_OBJECT) continue;
     if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL) continue;
     if (iter->st_size == 0) continue;
     Object_t o = {.name = &read_strtab[iter->st_name],
-                  .address = addr + iter->st_value,
+                  .address = (char *)addr + iter->st_value,
                   .bytes = iter->st_size};
 
     if (dlfn_used_object >= MAX_SYMBOLS) break;
@@ -171,7 +171,7 @@ static void
 parse_dynamic_header(void *addr, const ElfW(Phdr) * phdr)
 {
   ElfW(Addr) base = (ElfW(Addr))addr;
-  ElfW(Dyn) *dyn = (void *)(base + phdr->p_vaddr);
+  ElfW(Dyn) *dyn = (ElfW(Dyn *))(base + phdr->p_vaddr);
 
   void *strtab = NULL;
   void *symtab = NULL;
@@ -193,18 +193,18 @@ parse_dynamic_header(void *addr, const ElfW(Phdr) * phdr)
 static void
 parse_elf_header(void *dlAddr)
 {
-  ElfW(Ehdr) *elfHeader = dlAddr;
-  ElfW(Phdr) *pHeader = (void *)(dlAddr + elfHeader->e_phoff);
+  ElfW(Ehdr) *elfHeader = (ElfW(Ehdr) *)dlAddr;
+  ElfW(Phdr) *pHeader = (ElfW(Phdr *))((char *)dlAddr + elfHeader->e_phoff);
   void *dynHeader = NULL;
   for (size_t i = 0; i < elfHeader->e_phnum; ++i) {
     printf("\t\t header %zu: address=%10p type=0x%x\n", i,
-           (void *)(dlAddr + pHeader->p_vaddr), pHeader->p_type);
+           (void *)((char*)dlAddr + pHeader->p_vaddr), pHeader->p_type);
     if (pHeader->p_type == PT_DYNAMIC) {
       dynHeader = pHeader;
     }
-    pHeader = (void *)pHeader + elfHeader->e_phentsize;
+    pHeader = (ElfW(Phdr*)) (char*)pHeader + elfHeader->e_phentsize;
   }
-  if (dynHeader) parse_dynamic_header(dlAddr, dynHeader);
+  if (dynHeader) parse_dynamic_header((void*)dlAddr, (ElfW(Phdr*)) dynHeader);
 }
 
 bool

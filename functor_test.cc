@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "float.c"
-#include "functor.c"
+#include "float.cc"
+#include "functor.cc"
 #include "macro.h"
 #include "rdtsc.h"
 
@@ -64,7 +64,7 @@ api_call(Functor_t f)
 void
 manual_call(Functor_t f)
 {
-  f.call(f.param[0], f.param[1], f.param[2]);
+  f.ccall(f.param[0], f.param[1], f.param[2]);
 }
 
 static char global_result[8];
@@ -598,7 +598,7 @@ main(int argc, char **argv)
   };
   clear_result();
   for (int j = 0; j < ARRAY_LENGTH(call_address); ++j) {
-    gf = (Functor_t){.call = call_address[j]};
+    gf = (Functor_t){.ccall = call_address[j]};
     printf("\n\nTesting call %s\n", call_name[j]);
     for (int i = 0; i <= PARAM_COUNT; ++i) {
       param_choose_n("dip", i, global_result);

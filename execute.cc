@@ -5,14 +5,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "dlfn.c"
-#include "float.c"
-#include "functor.c"
-#include "global.c"
-#include "hash.c"
+#include "dlfn.cc"
+#include "float.cc"
+#include "functor.cc"
+#include "global.cc"
+#include "hash.cc"
 #include "macro.h"
 #include "rdtsc.h"
-#include "stats.c"
+#include "stats.cc"
 
 // extern
 extern long int strtol(const char *__restrict __nptr,
@@ -97,7 +97,7 @@ set_load_param(const char *str_value, Param_t *p)
 
   var->type = 'i';
   Functor_t fnctor = {
-      .call = copy,
+      .call = (FuncPointer)copy,
       .param[0].p = p,
       .param[1].p = &var->value,
   };
@@ -117,7 +117,7 @@ set_store_param(const char *str_value, size_t *result_ptr)
 
   var->type = 'i';
   Functor_t fnctor = {
-      .call = copy,
+      .call = (FuncPointer)copy,
       .param[0].p = &var->value,
       .param[1].p = result_ptr,
   };
@@ -271,11 +271,11 @@ execute_object(size_t len, char *input)
   }
 
   if (obj->bytes == 8) {
-    long *lp = obj->address;
-    double *dp = obj->address;
+    long *lp = (long*)obj->address;
+    double *dp = (double*)obj->address;
     printf("%s: %p long %ld double %f\n", token[1], obj->address, *lp, *dp);
   } else if (obj->bytes == 4) {
-    signed *p = obj->address;
+    signed *p = (signed*)obj->address;
     printf("%s: %p signed %d\n", token[1], obj->address, *p);
   }
 }
@@ -359,9 +359,10 @@ execute_mutation(size_t len, char *input)
     return;
   }
 
-  Op_t op = {.operand_type[0] = 'p',
-             .operand[0].cp = lhv,
-             .operator[0] = token[2][0] };
+  Op_t op;
+  op.operand_type[0] = 'p';
+  op.operand[0].cp = lhv;
+  op.opr[0] = token[2][0];
 
   if (rhv) {
     op.operand_type[1] = 'p';
@@ -401,7 +402,7 @@ execute_condition(size_t len, char *input)
   } else {
     op.operand_type[1] = set_value_param(token[3], &op.operand[1]);
   }
-  op.operator[0] = token[2][0];
+  op.opr[0] = token[2][0];
 
   Param_t result;
   char result_type = perform_op(&op, &result);

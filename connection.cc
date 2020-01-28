@@ -7,9 +7,9 @@
 #include <unistd.h>
 
 #include "macro.h"
-#include "network.c"
-#include "network_server.c"
-#include "record.c"
+#include "network.cc"
+#include "network_server.cc"
+#include "record.cc"
 
 #define MAX_PLAYER 4
 
@@ -31,7 +31,7 @@ digit_atoi(char c)
 }
 
 static int
-fixed_atoi(char str[static 3])
+fixed_atoi(char str[3])
 {
   return digit_atoi(str[0]) * 100 + digit_atoi(str[1]) * 10 +
          digit_atoi(str[2]);
@@ -90,7 +90,7 @@ connection_io()
 }
 
 bool
-connection_processing(RecordRW_t recording[static MAX_PLAYER])
+connection_processing(RecordRW_t recording[MAX_PLAYER])
 {
   while (used_receive_buffer >= 8) {
     int *block_len = (int *)connection_receive_buffer;
@@ -135,11 +135,11 @@ connection_print_stats()
 }
 
 typedef int (*NetworkSync_t)(uint32_t target_frame, RecordRW_t *input,
-                             RecordRW_t game_record[static MAX_PLAYER]);
+                             RecordRW_t game_record[MAX_PLAYER]);
 
 int
 connection_sync(uint32_t target_frame, RecordRW_t *input,
-                RecordRW_t game_record[static MAX_PLAYER])
+                RecordRW_t game_record[MAX_PLAYER])
 
 {
   if (!connection_io()) {

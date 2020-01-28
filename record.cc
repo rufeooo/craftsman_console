@@ -3,15 +3,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "macro.h"
-
-// extern
-extern void *malloc(size_t __size) __THROW __attribute_malloc__ __wur;
-extern void *realloc(void *__ptr,
-                     size_t __size) __THROW __attribute_warn_unused_result__;
-extern void free(void *__ptr) __THROW;
 
 typedef struct Record_s {
   char *buf;
@@ -33,10 +28,10 @@ typedef void (*RecordEvent_t)(size_t strlen, char *str);
 Record_t *
 record_alloc()
 {
-  Record_t *rec = malloc(sizeof(Record_t));
+  Record_t *rec = (Record_t *)malloc(sizeof(Record_t));
   rec->used_bytes = 0;
   rec->alloc_bytes = 4 * 1024;
-  rec->buf = malloc(rec->alloc_bytes);
+  rec->buf = (char *)malloc(rec->alloc_bytes);
 
   return rec;
 }
@@ -46,7 +41,7 @@ record_realloc(Record_t *rec, int bytesNeeded)
 {
   if (bytesNeeded <= 0) return true;
 
-  char *const newBuf = realloc(rec->buf, rec->alloc_bytes * 2);
+  char *const newBuf = (char *const)realloc(rec->buf, rec->alloc_bytes * 2);
   if (!newBuf) return false;
 
   rec->buf = newBuf;
@@ -176,9 +171,9 @@ record_compare(const Record_t *lhs, const Record_t *rhs)
 static Record_t *
 record_clone(const Record_t *rec)
 {
-  Record_t *clone = malloc(sizeof(Record_t));
+  Record_t *clone = (Record_t *)malloc(sizeof(Record_t));
   *clone = *rec;
-  clone->buf = malloc(clone->alloc_bytes);
+  clone->buf = (char *)malloc(clone->alloc_bytes);
   memcpy(clone->buf, rec->buf, rec->used_bytes);
   return clone;
 }

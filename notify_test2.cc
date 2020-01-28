@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "notify.c"
+#include "notify.cc"
 
 void
 change_event(int idx, const struct inotify_event *ev)

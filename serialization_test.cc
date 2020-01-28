@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "record.c"
+#include "record.cc"
 
 RecordRW_t frame_store;
 

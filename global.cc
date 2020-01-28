@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "functor.c"
+#include "functor.cc"
 
 #define MAX_VARIABLE_NAME 16
 
@@ -12,7 +12,7 @@ typedef struct {
   Param_t operand[2];
   char operand_type[2];
   union {
-    char operator[1];
+    char opr[1];
     uint8_t opcode;
   };
 } Op_t;

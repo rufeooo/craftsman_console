@@ -7,7 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "float.c"
+#include "float.cc"
 #include "macro.h"
 #include "rdtsc.h"
 

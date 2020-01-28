@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include "macro.h"
-#include "record.c"
+#include "record.cc"
 
 static Record_t *recording;
 static RecordOffset_t write_offset;

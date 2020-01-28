@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 
-#include "../float.c"
+#include "../float.cc"
 #include "submodule/test_games/math/quat.h"
 
 using namespace math;
