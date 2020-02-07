@@ -87,8 +87,7 @@ dlfn_print_functions()
 {
   printf("--Functions--\n");
   for (int i = 0; i < dlfn_used_function; ++i) {
-    printf("[ %p ] %s\n", (void *)dlfn_function[i].fnctor.call,
-           dlfn_function[i].name);
+    printf("[ %p ] %s\n", dlfn_function[i].fnctor.call, dlfn_function[i].name);
   }
 }
 
@@ -147,7 +146,7 @@ parse_symtab(void *addr, void *symtab, void *strtab)
     if (ELF64_ST_BIND(iter->st_info) != STB_GLOBAL) continue;
     if (iter->st_size == 0) continue;
     Function_t s = {.name = &read_strtab[iter->st_name],
-                    .fnctor = functor_init((void *)(addr + iter->st_value))};
+                    .fnctor = functor_init(addr + iter->st_value)};
 
     if (dlfn_used_function >= MAX_SYMBOLS) break;
     dlfn_function[dlfn_used_function++] = s;
@@ -168,10 +167,10 @@ parse_symtab(void *addr, void *symtab, void *strtab)
 }
 
 static void
-parse_dynamic_header(void *addr, const ElfW(Phdr) * phdr)
+parse_dynamic_header(void *base, const ElfW(Phdr) * phdr)
 {
-  ElfW(Addr) base = (ElfW(Addr))addr;
-  ElfW(Dyn) *dyn = (void *)(base + phdr->p_vaddr);
+  ElfW(Addr) addr = (ElfW(Addr))base;
+  ElfW(Dyn) *dyn = (base + phdr->p_vaddr);
 
   void *strtab = NULL;
   void *symtab = NULL;
@@ -187,24 +186,24 @@ parse_dynamic_header(void *addr, const ElfW(Phdr) * phdr)
     ++dyn;
   }
 
-  if (symtab) parse_symtab(addr, symtab, strtab);
+  if (symtab) parse_symtab(base, symtab, strtab);
 }
 
 static void
-parse_elf_header(void *dlAddr)
+parse_elf_header(void *base)
 {
-  ElfW(Ehdr) *elfHeader = dlAddr;
-  ElfW(Phdr) *pHeader = (void *)(dlAddr + elfHeader->e_phoff);
+  ElfW(Ehdr) *elfHeader = base;
+  ElfW(Phdr) *pHeader = base + elfHeader->e_phoff;
   void *dynHeader = NULL;
   for (size_t i = 0; i < elfHeader->e_phnum; ++i) {
     printf("\t\t header %zu: address=%10p type=0x%x\n", i,
-           (void *)(dlAddr + pHeader->p_vaddr), pHeader->p_type);
+           base + pHeader->p_vaddr, pHeader->p_type);
     if (pHeader->p_type == PT_DYNAMIC) {
       dynHeader = pHeader;
     }
     pHeader = (void *)pHeader + elfHeader->e_phentsize;
   }
-  if (dynHeader) parse_dynamic_header(dlAddr, dynHeader);
+  if (dynHeader) parse_dynamic_header(base, dynHeader);
 }
 
 bool
