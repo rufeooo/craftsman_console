@@ -246,12 +246,6 @@ game_simulation(uint8_t framerate, RecordRW_t game_record[static MAX_PLAYER])
       continue;
     }
 
-    if (!loop_fast_forward(preview.turn_farthest)) {
-      if (preview.turn_nearest > 1) {
-        input_queue = MAX((signed)input_queue - 1, 0);
-      }
-    }
-
     CommandFrame_t frame;
     if (!command_frame(player_count, game_record, &frame)) CRASH();
 
