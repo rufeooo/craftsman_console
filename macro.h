@@ -21,6 +21,7 @@
 #define UNFLAGGED(test_bits, set_bit) (set_bit ^ (test_bits & set_bit))
 
 #ifndef INLINE
+#define ALIGNAS(n) __attribute__((aligned(n)))
 #define INLINE __attribute__((always_inline)) inline
 #endif
 

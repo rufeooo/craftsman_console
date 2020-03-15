@@ -22,16 +22,26 @@ typedef struct {
 
 #define USEC_PER_CLOCK (1000.f / 1000.f / CLOCKS_PER_SEC)
 #define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
+#define MAX_SAMPLES 10
 
-void
-clock_init(uint64_t frame_goal_usec, TscClock_t *out_clock)
+// clock() will accumulate per thread
+// thus restricted to one thread at a time
+uint64_t
+__tsc_per_usec()
 {
+  static volatile uint64_t lock_id ALIGNAS(sizeof(uint64_t));
+  static volatile uint64_t running_thread ALIGNAS(sizeof(uint64_t));
+  uint64_t thread_id = lock_id++;
+  while (thread_id != running_thread) {
+    struct timespec ts = {0, MAX_SAMPLES * 1000 * 1000};
+    nanosleep(&ts, NULL);
+  }
+
   clock_t c = clock();
   clock_t p;
   uint64_t rc = rdtsc();
   uint64_t rp;
 
-#define MAX_SAMPLES 10
   uint64_t tsc_per_usec[MAX_SAMPLES];
   for (int i = 0; i < MAX_SAMPLES; ++i) {
     p = c;
@@ -46,33 +56,41 @@ clock_init(uint64_t frame_goal_usec, TscClock_t *out_clock)
     tsc_per_usec[i] = (rc - rp) * ((c - p) * USEC_PER_CLOCK);
   }
 
-  // bubble sort
-  for (int i = 0; i < MAX_SAMPLES - 1; ++i) {
-    for (int j = i + 1; j < MAX_SAMPLES; ++j) {
-      if (tsc_per_usec[i] > tsc_per_usec[j]) {
-        uint64_t tmp = tsc_per_usec[i];
-        tsc_per_usec[i] = tsc_per_usec[j];
-        tsc_per_usec[j] = tmp;
-      }
+  // insertion sort
+  for (int i = 1; i < MAX_SAMPLES; ++i) {
+    for (int j = i; j > 0; --j) {
+      if (tsc_per_usec[j - 1] <= tsc_per_usec[j]) break;
+      uint64_t tmp = tsc_per_usec[j - 1];
+      tsc_per_usec[j - 1] = tsc_per_usec[j];
+      tsc_per_usec[j] = tmp;
     }
   }
-  out_clock->median_tsc_per_usec = tsc_per_usec[MAX_SAMPLES / 2];
 
-  // Calculate the step
-  out_clock->tsc_step = frame_goal_usec * out_clock->median_tsc_per_usec;
-  out_clock->median_usec_per_tsc =
-      ((uint64_t)1 << 33) / out_clock->median_tsc_per_usec;
-  // Init to current time
-  uint64_t now = rdtsc();
-  out_clock->jerk = 0;
-  out_clock->tsc_clock = now;
-  out_clock->frame_to_frame_tsc = now;
+  ++running_thread;
+  return tsc_per_usec[MAX_SAMPLES / 2];
 }
 
 uint64_t
 __tscdelta_to_usec(const TscClock_t *clock, uint64_t delta_tsc)
 {
   return (delta_tsc * clock->median_usec_per_tsc) >> 33;
+}
+
+void
+clock_init(uint64_t frame_goal_usec, TscClock_t *out_clock)
+{
+  const uint64_t tsc_per_usec = __tsc_per_usec();
+  out_clock->median_tsc_per_usec = tsc_per_usec;
+  printf("clock_init tsc_per_usec %lu \n", tsc_per_usec);
+
+  // Calculate the step
+  out_clock->tsc_step = frame_goal_usec * tsc_per_usec;
+  out_clock->median_usec_per_tsc = ((uint64_t)1 << 33) / tsc_per_usec;
+  // Init to current time
+  uint64_t now = rdtsc();
+  out_clock->jerk = 0;
+  out_clock->tsc_clock = now;
+  out_clock->frame_to_frame_tsc = now;
 }
 
 uint64_t
